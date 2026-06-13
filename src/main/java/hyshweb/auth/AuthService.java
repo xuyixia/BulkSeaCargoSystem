@@ -1,10 +1,10 @@
 package hyshweb.auth;
 
-import hyshweb.common.Db;
-import hyshweb.common.Passwords;
-
 import java.sql.Connection;
 import java.util.Map;
+
+import hyshweb.common.Db;
+import hyshweb.common.Passwords;
 
 public class AuthService {
     public UserSession login(String username, String password) throws Exception {

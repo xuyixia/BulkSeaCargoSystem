@@ -1,14 +1,15 @@
 package hyshweb.masterdata;
 
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import com.alibaba.fastjson.JSONObject;
+
 import hyshweb.auth.UserSession;
 import hyshweb.common.Json;
 import hyshweb.common.Params;
 import hyshweb.common.Servlets;
-
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 @WebServlet("/api/master/*")
 public class MasterDataServlet extends Servlets {
@@ -36,6 +37,14 @@ public class MasterDataServlet extends Servlets {
             }
             return;
         }
+        if (path.startsWith("/dict-types")) {
+            if ("GET".equalsIgnoreCase(request.getMethod())) {
+                Json.ok(response, service.dictTypes());
+            } else {
+                Json.fail(response, HttpServletResponse.SC_METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", "方法不支持");
+            }
+            return;
+        }
         if (path.startsWith("/dicts/enabled")) {
             if ("GET".equalsIgnoreCase(request.getMethod())) {
                 Json.ok(response, service.enabledDicts(Params.str(request, "type")));
@@ -46,7 +55,7 @@ public class MasterDataServlet extends Servlets {
         }
         if (path.startsWith("/dicts")) {
             if ("GET".equalsIgnoreCase(request.getMethod())) {
-                Json.ok(response, service.dicts(Params.str(request, "type")));
+                Json.ok(response, service.dicts(request));
             } else if ("POST".equalsIgnoreCase(request.getMethod())) {
                 service.saveDict(Json.body(request));
                 Json.ok(response, true);

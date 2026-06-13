@@ -1,17 +1,18 @@
 package hyshweb.masterdata;
 
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
 import com.alibaba.fastjson.JSONObject;
+
 import hyshweb.auth.UserSession;
 import hyshweb.common.Db;
 import hyshweb.common.Page;
 import hyshweb.common.Params;
-
-import javax.servlet.http.HttpServletRequest;
-import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 public class MasterDataService {
     public Page customers(HttpServletRequest request) throws Exception {
@@ -70,11 +71,27 @@ public class MasterDataService {
         }
     }
 
-    public List<Map<String, Object>> dicts(String type) throws Exception {
+    public List<Map<String, Object>> dictTypes() throws Exception {
         try (Connection conn = Db.getConnection()) {
             return Db.query(conn,
-                    "SELECT dict_type, dict_code, dict_name, sort_order, status, remark FROM sys_dict WHERE dict_type=? ORDER BY sort_order",
-                    type);
+                    "SELECT DISTINCT dict_type FROM sys_dict ORDER BY dict_type");
+        }
+    }
+
+    public Page dicts(HttpServletRequest request) throws Exception {
+        String type = Params.str(request, "type");
+        int page = Params.page(request);
+        int pageSize = Params.pageSize(request);
+        try (Connection conn = Db.getConnection()) {
+            int total = count(conn, "sys_dict", "AND dict_type=?", List.of(type));
+            List<Object> queryParams = new ArrayList<>();
+            queryParams.add(type);
+            queryParams.add(pageSize);
+            queryParams.add((page - 1) * pageSize);
+            List<Map<String, Object>> rows = Db.query(conn,
+                    "SELECT dict_type, dict_code, dict_name, sort_order, status, remark FROM sys_dict WHERE dict_type=? ORDER BY sort_order LIMIT ? OFFSET ?",
+                    queryParams.toArray());
+            return new Page(rows, page, pageSize, total, null, null);
         }
     }
 

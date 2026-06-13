@@ -1,15 +1,16 @@
 package hyshweb.attachment;
 
-import hyshweb.auth.UserSession;
-import hyshweb.common.Db;
-
-import javax.servlet.http.Part;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import javax.servlet.http.Part;
+
+import hyshweb.auth.UserSession;
+import hyshweb.common.Db;
 
 public class AttachmentService {
     private static final long MAX_SIZE = 2L * 1024L * 1024L;

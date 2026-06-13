@@ -1,11 +1,5 @@
 package hyshweb.tracking;
 
-import hyshweb.auth.UserSession;
-import hyshweb.common.Db;
-import hyshweb.common.Page;
-import hyshweb.common.Params;
-
-import javax.servlet.http.HttpServletRequest;
 import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -13,6 +7,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import hyshweb.auth.UserSession;
+import hyshweb.common.Db;
+import hyshweb.common.Page;
+import hyshweb.common.Params;
 
 public class TrackingService {
     public List<Map<String, Object>> sales(UserSession user) throws Exception {

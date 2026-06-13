@@ -1,13 +1,12 @@
 package hyshweb.tracking;
 
-import hyshweb.auth.UserSession;
-import hyshweb.common.Json;
-import hyshweb.common.Params;
-import hyshweb.common.Servlets;
-
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import hyshweb.auth.UserSession;
+import hyshweb.common.Json;
+import hyshweb.common.Servlets;
 
 @WebServlet("/api/tracking/*")
 public class TrackingServlet extends Servlets {

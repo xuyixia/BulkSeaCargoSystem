@@ -1,10 +1,11 @@
 package hyshweb.auth;
 
-import javax.servlet.http.HttpServletRequest;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
 
 public class UserSession implements Serializable {
     public static final String SESSION_KEY = "sysUser";

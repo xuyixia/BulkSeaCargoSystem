@@ -2,7 +2,8 @@ const state = {
     user: null,
     tabs: [],
     active: null,
-    currentDictType: "package_type"
+    currentDictType: "package_type",
+    dictPageSize: 20
 };
 
 async function api(url, options = {}) {
@@ -188,7 +189,7 @@ const views = {
         openTab("outbound", "出库查询", renderOutbound);
     },
     master() {
-        openTab("master", "基础资料", renderMaster);
+        openTab("master", "资料管理", renderMaster);
     },
     users() {
         openTab("users", "账号管理", renderUsers);
@@ -750,8 +751,8 @@ async function renderMaster() {
     setView(`
         <section class="panel">
             <div class="actions">
-                <button class="secondary" onclick="loadCustomers()">客户/销售</button>
-                <button class="secondary" onclick="loadDicts()">字典</button>
+                <button class="secondary" onclick="loadCustomers()">客户销售管理</button>
+                <button class="secondary" onclick="loadDicts()">内部资料管理</button>
             </div>
             <div id="masterBox"></div>
         </section>
@@ -761,7 +762,7 @@ async function renderMaster() {
 
 async function loadCustomers(query = "") {
     const page = await api(`api/master/customers?${query}`);
-    $("#masterBox").innerHTML = `<h3>客户/销售</h3>
+    $("#masterBox").innerHTML = `<h3>客户销售管理</h3>
         <form id="customerSearch" class="toolbar">
             <div class="field"><label>代码</label><input name="code"></div>
             <div class="field"><label>中文名</label><input name="cnName"></div>
@@ -797,16 +798,102 @@ async function loadUsers(query = "") {
     bindSubmit("#userSearch", form => loadUsers(qs(form)));
 }
 
+const dictTypeNames = {
+    cost_item: "费用项",
+    customs_broker: "报关行",
+    export_port: "出口口岸",
+    package_type: "包装种类"
+};
+
+function dictTypeName(type) {
+    return dictTypeNames[type] || type;
+}
+
 async function loadDicts() {
-    const type = prompt("字典类型", state.currentDictType || "package_type");
-    if (!type) return;
+    const types = await api("api/master/dict-types");
+    $("#masterBox").innerHTML = `<div class="dict-layout">
+        <div class="dict-sidebar">
+            <h3>字典类型</h3>
+            <div id="dictTypeList">${types.map(t => `<div class="dict-type-item${state.currentDictType === t.dictType ? " active" : ""}" data-type="${esc(t.dictType)}" onclick="selectDictType('${esc(t.dictType)}')">${esc(dictTypeName(t.dictType))}</div>`).join("")}</div>
+        </div>
+        <div class="dict-main">
+            <h3 id="dictTitle">字典项</h3>
+            <div class="actions"><button id="dictAddBtn" onclick="openDict('${esc(state.currentDictType || "")}')">新增</button> <button class="secondary" id="dictEditBtn" onclick="editSelectedDict()" disabled>编辑</button> <button class="danger" id="dictDelBtn" onclick="deleteSelectedDict()" disabled>删除</button> <button class="secondary" id="dictEnableBtn" onclick="setSelectedDictStatus('1')" disabled>启用</button> <button class="secondary" id="dictDisableBtn" onclick="setSelectedDictStatus('0')" disabled>禁用</button></div>
+            <div id="dictItems"><p style="color:var(--muted)">请在左侧选择字典类型</p></div>
+        </div>
+    </div>`;
+    if (state.currentDictType && types.length) {
+        await loadDictItems();
+    } else if (types.length) {
+        state.currentDictType = types[0].dictType;
+        await loadDictItems();
+    }
+}
+
+function selectDictType(type) {
     state.currentDictType = type;
-    const rows = await api(`api/master/dicts?type=${encodeURIComponent(type)}`);
-    $("#masterBox").innerHTML = `<h3>字典：${esc(type)}</h3><div class="actions"><button onclick="openDict('${esc(type)}')">新增</button></div><table><thead><tr><th>代码</th><th>名称</th><th>排序</th><th>状态</th><th>备注</th><th>操作</th></tr></thead><tbody>${html(rows.map(row => `<tr><td>${esc(row.dictCode)}</td><td>${esc(row.dictName)}</td><td>${esc(row.sortOrder)}</td><td>${esc(row.status)}</td><td>${esc(row.remark)}</td><td><button class="secondary" onclick="openDict('${esc(row.dictType)}','${esc(row.dictCode)}','${esc(row.dictName)}','${esc(row.sortOrder)}','${esc(row.status)}','${esc(row.remark)}')">编辑</button> <button class="danger" onclick="deleteDict('${esc(row.dictType)}','${esc(row.dictCode)}')">删除</button> <button class="secondary" onclick="setDictStatus('${esc(row.dictType)}','${esc(row.dictCode)}','1')">启用</button> <button class="secondary" onclick="setDictStatus('${esc(row.dictType)}','${esc(row.dictCode)}','0')">禁用</button></td></tr>`))}</tbody></table>`;
+    loadDictItems();
+}
+
+async function loadDictItems(query = "") {
+    const type = state.currentDictType;
+    state.selectedDictCode = null;
+    document.querySelectorAll(".dict-type-item").forEach(el => {
+        el.classList.toggle("active", el.dataset.type === type);
+    });
+    $("#dictTitle").textContent = "字典项：" + dictTypeName(type);
+    $("#dictAddBtn").setAttribute("onclick", `openDict('${esc(type)}')`);
+    const page = await api(`api/master/dicts?type=${encodeURIComponent(type)}&pageSize=${state.dictPageSize}${query ? "&" + query : ""}`);
+    const prevPage = Math.max(1, page.page - 1);
+    const nextPage = Math.min(page.totalPages || 1, page.page + 1);
+    $("#dictItems").innerHTML = `
+        <table><thead><tr><th>编码</th><th>名称</th><th>排序</th><th>状态</th><th>备注</th></tr></thead><tbody>${html(page.items.map(row => `<tr class="dict-row" data-code="${esc(row.dictCode)}" data-name="${esc(row.dictName)}" data-sort="${esc(row.sortOrder)}" data-status="${esc(row.status)}" data-remark="${esc(row.remark)}" onclick="selectDictRow(this)"><td>${esc(row.dictCode)}</td><td>${esc(row.dictName)}</td><td>${esc(row.sortOrder)}</td><td>${esc(row.status)}</td><td>${esc(row.remark)}</td></tr>`))}</tbody></table>
+        <div class="dict-pager">
+            <select onchange="changeDictPageSize(this.value)" class="dict-pager-select">
+                <option value="10" ${state.dictPageSize==10?"selected":""}>10</option>
+                <option value="20" ${state.dictPageSize==20?"selected":""}>20</option>
+                <option value="50" ${state.dictPageSize==50?"selected":""}>50</option>
+                <option value="100" ${state.dictPageSize==100?"selected":""}>100</option>
+            </select><span class="dict-pager-label">条/页</span>
+            <button type="button" class="secondary" ${page.page <= 1 ? "disabled" : ""} onclick="loadDictItems('page=${prevPage}')">上一页</button>
+            <span>${page.page} / ${page.totalPages || 1}</span>
+            <button type="button" class="secondary" ${page.page >= page.totalPages ? "disabled" : ""} onclick="loadDictItems('page=${nextPage}')">下一页</button>
+        </div>`;
+}
+
+function changeDictPageSize(size) {
+    state.dictPageSize = parseInt(size);
+    loadDictItems();
+}
+
+function selectDictRow(tr) {
+    document.querySelectorAll(".dict-row").forEach(r => r.classList.remove("selected"));
+    tr.classList.add("selected");
+    state.selectedDictCode = tr.dataset.code;
+    state.selectedDict = {code: tr.dataset.code, name: tr.dataset.name, sort: tr.dataset.sort, status: tr.dataset.status, remark: tr.dataset.remark};
+    ["dictEditBtn", "dictDelBtn", "dictEnableBtn", "dictDisableBtn"].forEach(id => {
+        document.getElementById(id).disabled = false;
+    });
+}
+
+function editSelectedDict() {
+    if (!state.selectedDict) return;
+    const d = state.selectedDict;
+    openDict(state.currentDictType, d.code, d.name, d.sort, d.status, d.remark);
+}
+
+async function deleteSelectedDict() {
+    if (!state.selectedDict) return;
+    await deleteDict(state.currentDictType, state.selectedDict.code);
+}
+
+async function setSelectedDictStatus(status) {
+    if (!state.selectedDict) return;
+    await setDictStatus(state.currentDictType, state.selectedDict.code, status);
 }
 
 function openCustomer(code = "", cnName = "", enName = "", type = "Customer", superiorCode = "") {
-    modal("客户/销售", `<form id="customerForm"><div class="grid">
+    modal("客户销售管理", `<form id="customerForm"><div class="grid">
         <div class="field"><label>代码</label><input name="customerCode" value="${esc(code)}"></div>
         <div class="field"><label>中文名</label><input name="customerCnName" value="${esc(cnName)}"></div>
         <div class="field"><label>英文名</label><input name="customerEnName" value="${esc(enName)}"></div>
@@ -849,7 +936,7 @@ async function setUserStatus(username, status) {
 
 function openDict(dictType = "", dictCode = "", dictName = "", sortOrder = "0", status = "1", remark = "") {
     modal("字典", `<form id="dictForm"><div class="grid">
-        <div class="field"><label>类型</label><input name="dictType" value="${esc(dictType)}"></div>
+        <div class="field"><label>类型</label><input name="dictType" value="${esc(dictType)}" readonly></div>
         <div class="field"><label>代码</label><input name="dictCode" value="${esc(dictCode)}"></div>
         <div class="field"><label>名称</label><input name="dictName" value="${esc(dictName)}"></div>
         <div class="field"><label>排序</label><input type="number" name="sortOrder" value="${esc(sortOrder)}"></div>
@@ -857,9 +944,12 @@ function openDict(dictType = "", dictCode = "", dictName = "", sortOrder = "0", 
         <div class="field wide"><label>备注</label><input name="remark" value="${esc(remark)}"></div>
     </div><div class="actions"><button>保存</button><span class="msg"></span></div></form>`);
     bindSubmit("#dictForm", async form => {
-        await api("api/master/dicts", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+        const data = Object.fromEntries(new FormData(form).entries());
+        if (!data.dictCode || !data.dictCode.trim()) { alert("代码不能为空"); return; }
+        if (!data.dictName || !data.dictName.trim()) { alert("名称不能为空"); return; }
+        await api("api/master/dicts", {method: "POST", body: JSON.stringify(data)});
         closeModal();
-        state.currentDictType = new FormData(form).get("dictType") || state.currentDictType;
+        state.currentDictType = data.dictType || state.currentDictType;
         await reloadDicts();
     });
 }
@@ -878,9 +968,7 @@ async function setDictStatus(dictType, dictCode, status) {
 }
 
 async function reloadDicts() {
-    const type = state.currentDictType || "package_type";
-    const rows = await api(`api/master/dicts?type=${encodeURIComponent(type)}`);
-    $("#masterBox").innerHTML = `<h3>字典：${esc(type)}</h3><div class="actions"><button onclick="openDict('${esc(type)}')">新增</button></div><table><thead><tr><th>代码</th><th>名称</th><th>排序</th><th>状态</th><th>备注</th><th>操作</th></tr></thead><tbody>${html(rows.map(row => `<tr><td>${esc(row.dictCode)}</td><td>${esc(row.dictName)}</td><td>${esc(row.sortOrder)}</td><td>${esc(row.status)}</td><td>${esc(row.remark)}</td><td><button class="secondary" onclick="openDict('${esc(row.dictType)}','${esc(row.dictCode)}','${esc(row.dictName)}','${esc(row.sortOrder)}','${esc(row.status)}','${esc(row.remark)}')">编辑</button> <button class="danger" onclick="deleteDict('${esc(row.dictType)}','${esc(row.dictCode)}')">删除</button> <button class="secondary" onclick="setDictStatus('${esc(row.dictType)}','${esc(row.dictCode)}','1')">启用</button> <button class="secondary" onclick="setDictStatus('${esc(row.dictType)}','${esc(row.dictCode)}','0')">禁用</button></td></tr>`))}</tbody></table>`;
+    await loadDictItems();
 }
 
 function openAttachment(ownerType, ownerId, replace = false) {

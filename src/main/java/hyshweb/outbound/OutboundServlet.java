@@ -1,14 +1,15 @@
 package hyshweb.outbound;
 
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import com.alibaba.fastjson.JSONObject;
+
 import hyshweb.auth.UserSession;
 import hyshweb.common.Json;
 import hyshweb.common.Params;
 import hyshweb.common.Servlets;
-
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 @WebServlet("/api/outbound/*")
 public class OutboundServlet extends Servlets {
@@ -31,7 +32,7 @@ public class OutboundServlet extends Servlets {
 //                service.deleteDetail(Params.str(request, "detailUuid"), user);
 //                Json.ok(response, true);
 //            }
-//         /   
+//         /
             }else {
                 Json.fail(response, HttpServletResponse.SC_METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", "方法不支持");
             }

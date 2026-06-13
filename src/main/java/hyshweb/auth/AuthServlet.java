@@ -1,13 +1,14 @@
 package hyshweb.auth;
 
-import com.alibaba.fastjson.JSONObject;
-import hyshweb.common.Json;
-import hyshweb.common.Params;
-import hyshweb.common.Servlets;
-
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.alibaba.fastjson.JSONObject;
+
+import hyshweb.common.Json;
+import hyshweb.common.Params;
+import hyshweb.common.Servlets;
 
 @WebServlet("/api/auth/*")
 public class AuthServlet extends Servlets {
