@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HYSH Web</title>
+    <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="app-shell">
+    <header class="side">
+        <div class="brand">HYSH Web</div>
+        <nav class="nav">
+            <button class="active" data-view="inbound">入库管理</button>
+            <button data-view="outbound">出库管理</button>
+            <button data-view="master" data-menu="masterdata">基础资料</button>
+            <button data-view="users" data-menu="users">账号管理</button>
+        </nav>
+        <div class="actions"><span id="user"></span><button class="secondary" onclick="logout()">退出</button></div>
+    </header>
+    <main class="main">
+        <div id="tabs" class="tabs"></div>
+        <section id="view" class="view"></section>
+    </main>
+</div>
+<div id="modal" class="modal"></div>
+<script src="assets/app.js"></script>
+<script>initApp();</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+db.url=
+db.user=root
+db.password=
+db.poolSize=10

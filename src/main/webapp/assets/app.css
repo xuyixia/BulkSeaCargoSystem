@@ -1,0 +1,384 @@
+:root {
+    --bg: #f4f6f8;
+    --panel: #ffffff;
+    --line: #d7dde4;
+    --text: #1f2933;
+    --muted: #687384;
+    --primary: #1769aa;
+    --primary-strong: #0f4f83;
+    --danger: #b42318;
+    --ok: #157347;
+    --warn: #a15c07;
+    --tab: #e9eef3;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--text);
+    background: var(--bg);
+    font-family: Arial, "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+button {
+    border: 1px solid var(--primary);
+    background: var(--primary);
+    color: #fff;
+    border-radius: 4px;
+    min-height: 32px;
+    padding: 0 12px;
+    cursor: pointer;
+}
+
+.button-link {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    padding: 0 12px;
+    background: #fff;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+button.secondary {
+    background: #fff;
+    color: var(--primary);
+}
+
+button.danger {
+    border-color: var(--danger);
+    background: var(--danger);
+}
+
+button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    min-height: 32px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 5px 8px;
+    background: #fff;
+    color: var(--text);
+}
+
+textarea {
+    min-height: 72px;
+    resize: vertical;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+}
+
+th,
+td {
+    border-bottom: 1px solid var(--line);
+    padding: 8px;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: #eef2f6;
+    color: #273444;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+td {
+    word-break: break-word;
+}
+
+.login-page {
+    display: grid;
+    place-items: center;
+    padding: 24px;
+}
+
+.login-box {
+    width: min(380px, 100%);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(31, 41, 51, .08);
+}
+
+.login-box h1 {
+    margin: 0 0 18px;
+    font-size: 22px;
+}
+
+.app-shell {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+}
+
+.side {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: space-between;
+    background: #26323f;
+    color: #fff;
+    padding: 10px 16px;
+}
+
+.brand {
+    padding: 0;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.nav {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+}
+
+.nav button {
+    width: auto;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    color: #dce5ee;
+    text-align: center;
+}
+
+.nav button.active,
+.nav button:hover {
+    background: #385064;
+    color: #fff;
+}
+
+.main {
+    min-width: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
+}
+
+.tabs {
+    display: flex;
+    gap: 6px;
+    padding: 8px 16px 0;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+}
+
+.tab {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    background: var(--tab);
+    color: var(--text);
+    padding: 7px 10px;
+    border-radius: 6px 6px 0 0;
+    white-space: nowrap;
+}
+
+.tab.active {
+    background: var(--bg);
+    color: var(--primary-strong);
+}
+
+.tab .close {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    min-height: 0;
+    padding: 0 2px;
+}
+
+.view {
+    padding: 16px;
+    overflow: auto;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: end;
+    margin-bottom: 12px;
+}
+
+.field {
+    width: 160px;
+}
+
+.field.small {
+    width: 110px;
+}
+
+.field.wide {
+    width: 260px;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 12px;
+}
+
+.summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    color: var(--muted);
+    margin: 8px 0 0;
+}
+
+.status {
+    display: inline-block;
+    min-width: 48px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #e9eef3;
+    text-align: center;
+}
+
+.status.ok {
+    background: #dff3e8;
+    color: var(--ok);
+}
+
+.status.warn {
+    background: #fff0d9;
+    color: var(--warn);
+}
+
+.msg {
+    min-height: 22px;
+    color: var(--danger);
+}
+
+.modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(20, 28, 36, .42);
+    padding: 20px;
+}
+
+.modal.open {
+    display: flex;
+}
+
+.dialog {
+    width: min(920px, 100%);
+    max-height: 88vh;
+    overflow: auto;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    padding: 14px;
+}
+
+.dialog-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.dialog-head h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.tracking-shell {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 18px;
+}
+
+@media (max-width: 900px) {
+    .app-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .side {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .nav {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+    }
+
+    .nav button {
+        width: auto;
+        white-space: nowrap;
+    }
+
+    .grid,
+    .split {
+        grid-template-columns: 1fr;
+    }
+
+    .field,
+    .field.small,
+    .field.wide {
+        width: 100%;
+    }
+}

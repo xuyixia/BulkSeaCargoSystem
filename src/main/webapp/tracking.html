@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物流轨迹查询</title>
+    <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<main class="tracking-shell">
+    <section class="panel">
+        <h1>物流轨迹查询 / Tracking</h1>
+        <div class="actions">
+            <button type="button" class="secondary" onclick="setLanguage('zh')">中文</button>
+            <button type="button" class="secondary" onclick="setLanguage('en')">English</button>
+        </div>
+        <form id="trackLogin" class="toolbar">
+            <div class="field"><label data-i18n="account">账号</label><input name="username" required></div>
+            <div class="field"><label data-i18n="password">密码</label><input type="password" name="password" required></div>
+            <button data-i18n="login">登录</button>
+            <span class="msg"></span>
+        </form>
+        <form id="trackSearch" class="toolbar" style="display:none">
+            <div class="field"><label data-i18n="sales">销售</label><select name="saleCode" id="saleCode"></select></div>
+            <div class="field"><label data-i18n="from">开始日期</label><input type="date" name="startDate" id="startDate"></div>
+            <div class="field"><label data-i18n="to">结束日期</label><input type="date" name="endDate" id="endDate"></div>
+            <div class="field"><label data-i18n="inboundNo">入库单号</label><input name="inOrderNo"></div>
+            <div class="field"><label data-i18n="trackingNo">跟踪单号</label><input name="trackNo"></div>
+            <button data-i18n="search">查询</button>
+            <span class="msg"></span>
+        </form>
+    </section>
+    <section class="panel" id="trackResult"></section>
+</main>
+<script src="assets/app.js"></script>
+<script>
+    let languageMode = "zh";
+    const labels = {
+        zh: {account: "账号", password: "密码", login: "登录", sales: "销售", from: "开始日期", to: "结束日期", inboundNo: "入库单号", trackingNo: "跟踪单号", search: "查询"},
+        en: {account: "Account", password: "Password", login: "Login", sales: "Sales", from: "From", to: "To", inboundNo: "Inbound No.", trackingNo: "Tracking No.", search: "Search"}
+    };
+    let trackPage = null;
+    function setLanguage(mode) {
+        languageMode = mode;
+        document.querySelectorAll("[data-i18n]").forEach(node => node.textContent = labels[languageMode][node.dataset.i18n]);
+    }
+    setLanguage(languageMode);
+    $("#startDate").value = today(-7);
+    $("#endDate").value = today();
+    bindSubmit("#trackLogin", async form => {
+        await api("api/auth/login", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+        const sales = await api("api/tracking/sales");
+        $("#saleCode").innerHTML = sales.map(row => `<option value="${esc(row.customerCode)}">${esc(row.customerCnName)} / ${esc(row.customerEnName)}</option>`).join("");
+        $("#trackLogin").style.display = "none";
+        $("#trackSearch").style.display = "";
+    });
+    bindSubmit("#trackSearch", async form => {
+        await loadTrackingOrders(qs(form));
+    });
+    async function loadTrackingOrders(query) {
+        const page = await api(`api/tracking/orders?${query}`);
+        trackPage = page;
+        $("#trackResult").innerHTML = `<table><thead><tr><th>Tracking No.</th><th>Order</th><th>Date</th><th>Customer</th><th>Product</th><th>Packages</th><th>Weight</th><th>Volume</th><th></th></tr></thead><tbody>${html(page.items.map(row => `<tr><td>${esc(row.trackNo)}</td><td>${esc(row.inOrderNo)}</td><td>${esc(row.inDate)}</td><td>${esc(row.customer)}</td><td>${esc(row.productNames)}</td><td>${esc(row.packageQty)}</td><td>${esc(row.weight)}</td><td>${esc(row.volume)}</td><td><button class="secondary" onclick="trackDetail('${esc(row.trackNo)}')">Detail</button></td></tr>`))}</tbody></table>`;
+        $("#trackResult").insertAdjacentHTML("beforeend", trackingPager(page));
+    }
+    function trackingPager(page) {
+        const prevPage = Math.max(1, page.page - 1);
+        const nextPage = Math.min(page.totalPages || 1, page.page + 1);
+        return `<div class="actions">
+            <button type="button" class="secondary" ${page.page <= 1 ? "disabled" : ""} onclick="loadTrackingOrders(trackQuery(${prevPage}))">上一页</button>
+            <span>${page.page} / ${page.totalPages || 1}</span>
+            <button type="button" class="secondary" ${page.page >= page.totalPages ? "disabled" : ""} onclick="loadTrackingOrders(trackQuery(${nextPage}))">下一页</button>
+        </div>`;
+    }
+    function trackQuery(page) {
+        const params = new URLSearchParams(qs($("#trackSearch")));
+        params.set("page", page);
+        return params.toString();
+    }
+    async function trackDetail(trackNo) {
+        const data = await api(`api/tracking/orders/${encodeURIComponent(trackNo)}`);
+        modal(`Tracking ${trackNo}`, `
+            <h3>货物 / Goods</h3>
+            <table><thead><tr><th>Name</th><th>English</th><th>Marks</th><th>Packages</th><th>Weight</th><th>Volume</th></tr></thead><tbody>${html((data.details || []).map(row => `<tr><td>${esc(row.productName)}</td><td>${esc(row.productEnName)}</td><td>${esc(row.marks)}</td><td>${esc(row.packageQty)} ${esc(row.packageType)}</td><td>${esc(row.weight)}</td><td>${esc(row.volume)}</td></tr>`))}</tbody></table>
+            <h3>节点 / Nodes</h3>
+            <table><thead><tr><th>Node</th><th>Time</th><th>ATD</th><th>ETA</th><th>ATA</th></tr></thead><tbody>${html((data.nodes || []).map(row => `<tr><td>${esc(row.operateDesc)}</td><td>${esc(row.operateTime)}</td><td>${esc(row.atd)}</td><td>${esc(row.eta)}</td><td>${esc(row.ata)}</td></tr>`))}</tbody></table>
+        `);
+    }
+</script>
+<div id="modal" class="modal"></div>
+</body>
+</html>
