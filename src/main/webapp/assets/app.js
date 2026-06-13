@@ -135,10 +135,11 @@ function setView(markup) {
 function bindSubmit(selector, handler) {
     $(selector).addEventListener("submit", async event => {
         event.preventDefault();
+        const form = event.currentTarget;
         try {
-            await handler(event.currentTarget);
+            await handler(form);
         } catch (e) {
-            $(".msg", event.currentTarget)?.replaceChildren(document.createTextNode(e.message));
+            $(".msg", form)?.replaceChildren(document.createTextNode(e.message));
         }
     });
 }
@@ -225,7 +226,9 @@ async function renderInbound() {
 
 async function loadInbound(query) {
     const page = await api(`api/inbound/orders?${query}`);
-    $("#inTable").innerHTML = `
+    const box = $("#inTable");
+    if (!box) return;
+    box.innerHTML = `
         <table>
             <thead><tr><th>入库单号</th><th>状态</th><th>跟踪单号</th><th>客户</th><th>销售</th><th>入库日期</th><th>件数</th><th>重量</th><th>体积</th><th>物流节点</th><th>操作</th></tr></thead>
             <tbody>${html(page.items.map(row => `
@@ -506,7 +509,7 @@ async function loadOutbound(query) {
             <tbody>${html(page.items.map(row => `
                 <tr><td>${esc(row.outOrderNo)}</td><td>${esc(row.soNo)}</td><td><span class="status ${row.status === "有效" ? "ok" : "warn"}">${esc(row.status)}</span></td>
                 <td>${esc(row.loadingDate)}</td><td>${esc(row.containerNo)}</td><td>${esc(row.carPlate)}</td><td>${esc(row.wljd)}</td><td>${esc(row.totalPackageQty)}</td><td>${money(row.totalCost)}</td>
-                <td><button class="secondary" onclick="editOutbound('${esc(row.outOrderNo)}')">编辑</button></td></tr>
+                <td><button class="secondary" onclick="editOutbound('${esc(row.outOrderNo)}')">编辑</button> <button class="danger" onclick="deleteOutbound('${esc(row.outOrderNo)}')">删除</button></td></tr>
             `))}</tbody>
         </table>
         <div class="summary"><span>总数：${page.total}</span><span>总件数：${page.totalSummary.totalPackageQty || 0}</span><span>总费用：${money(page.totalSummary.totalCost)}</span></div>
@@ -519,18 +522,20 @@ function newOutbound() {
 }
 
 async function editOutbound(orderNo) {
-    const order = orderNo ? await api(`api/outbound/orders/${orderNo}`) : {};
-    const [customsBrokers, exportPorts] = await Promise.all([
-        api("api/master/dicts/enabled?type=customs_broker"),
-        api("api/master/dicts/enabled?type=export_port")
-    ]);
+    try {
+        const order = orderNo ? await api(`api/outbound/orders/${orderNo}`) : {};
+        const [customsBrokers, exportPorts] = await Promise.all([
+            api("api/master/dicts/enabled?type=customs_broker"),
+            api("api/master/dicts/enabled?type=export_port")
+        ]);
     const customsOptions = dictOptions(customsBrokers, order.customsBroker, order.customsBroker) || `<option value="">请先维护报关行字典</option>`;
     const portOptions = dictOptions(exportPorts, order.exportPort, order.exportPort) || `<option value="">请先维护口岸字典</option>`;
     modal(orderNo ? `出库单 ${orderNo}` : "新增出库单", `
         <form id="outEdit">
             <div class="grid">
-                <div class="field"><label>出库单号</label><input name="outOrderNo" value="${esc(order.outOrderNo)}" readonly></div>
+                ${orderNo ? `<div class="field"><label>出库单号</label><input name="outOrderNo" value="${esc(order.outOrderNo)}" readonly></div>` : `<input type="hidden" name="outOrderNo" value="">`}
                 <div class="field"><label>SO号</label><input name="soNo" value="${esc(order.soNo)}"></div>
+                <div class="field"><label>状态</label><input name="status" value="草稿" readonly></div>
                 <div class="field"><label>装柜日期</label><input type="date" name="loadingDate" value="${esc(order.loadingDate || today())}"></div>
                 <div class="field"><label>柜号</label><input name="containerNo" value="${esc(order.containerNo)}"></div>
                 <div class="field"><label>车牌</label><input name="carPlate" value="${esc(order.carPlate)}"></div>
@@ -561,6 +566,9 @@ async function editOutbound(orderNo) {
         <div>${receivableTable(order.receivables || [])}</div>
     `);
     bindSubmit("#outEdit", saveOutbound);
+    } catch (e) {
+        alert("加载失败：" + e.message);
+    }
 }
 
 function detailTable(rows) {
@@ -584,9 +592,13 @@ function receivableTable(rows) {
 
 async function saveOutbound(form) {
     const body = Object.fromEntries(new FormData(form).entries());
+    if (body.containerNo && !/^[A-Z]{4}\d{7}$/.test(body.containerNo)) {
+        alert("柜号格式错误，应为4个大写字母+7位数字");
+        return;
+    }
     const orderNo = await api("api/outbound/orders", {method: "POST", body: JSON.stringify(body)});
     closeModal();
-    await editOutbound(orderNo);
+    await renderOutbound();
 }
 
 function openOutDetailEdit(detailUuid, packages, qty) {
@@ -625,9 +637,13 @@ async function cancelOutbound(orderNo) {
 
 async function deleteOutbound(orderNo) {
     if (!confirm("确认删除该出库单并回补库存？")) return;
-    await api(`api/outbound/orders/${orderNo}`, {method: "DELETE"});
-    closeModal();
-    await renderOutbound();
+    try {
+        await api(`api/outbound/orders/${orderNo}`, {method: "DELETE"});
+        closeModal();
+        await renderOutbound();
+    } catch (e) {
+        alert(e.message);
+    }
 }
 
 async function openStockPicker(orderNo, query = "") {
