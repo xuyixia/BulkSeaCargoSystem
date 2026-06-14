@@ -505,11 +505,11 @@ async function loadOutbound(query) {
     const page = await api(`api/outbound/orders?${query}`);
     $("#outTable").innerHTML = `
         <table>
-            <thead><tr><th>出库单号</th><th>SO号</th><th>状态</th><th>装柜日期</th><th>柜号</th><th>车牌</th><th>节点</th><th>件数</th><th>费用</th><th>操作</th></tr></thead>
+            <thead><tr><th>出库单号</th><th>SO号</th><th>状态</th><th>装柜日期</th><th>柜号</th><th>车牌</th><th>物流节点</th><th>出库件数</th><th>出库重量</th><th>出库体积</th><th>出库数量</th><th>报关行</th><th>出口口岸</th><th>创建人</th><th>费用</th><th>操作</th></tr></thead>
             <tbody>${html(page.items.map(row => `
                 <tr><td>${esc(row.outOrderNo)}</td><td>${esc(row.soNo)}</td><td><span class="status ${row.status === "有效" ? "ok" : "warn"}">${esc(row.status)}</span></td>
-                <td>${esc(row.loadingDate)}</td><td>${esc(row.containerNo)}</td><td>${esc(row.carPlate)}</td><td>${esc(row.wljd)}</td><td>${esc(row.totalPackageQty)}</td><td>${money(row.totalCost)}</td>
-                <td><button class="secondary" onclick="editOutbound('${esc(row.outOrderNo)}')">编辑</button> <button class="danger" onclick="deleteOutbound('${esc(row.outOrderNo)}')">删除</button></td></tr>
+                <td>${esc(row.loadingDate)}</td><td>${esc(row.containerNo)}</td><td>${esc(row.carPlate)}</td><td>${esc(row.wljd)}</td><td>${esc(row.totalPackageQty)}</td><td>${esc(row.totalWeight)}</td><td>${esc(row.totalVolume)}</td><td>${esc(row.totalQty)}</td><td>${esc(row.customsBroker)}</td><td>${esc(row.exportPort)}</td><td>${esc(row.creator)}</td><td>${money(row.totalCost)}</td>
+                <td><button class="secondary" onclick="editOutbound('${esc(row.outOrderNo)}')">编辑</button> <button class="danger" onclick="deleteOutbound('${esc(row.outOrderNo)}')">删除</button> <button class="secondary" onclick="openOutLog('${esc(row.outOrderNo)}')">操作日志</button></td></tr>
             `))}</tbody>
         </table>
         <div class="summary"><span>总数：${page.total}</span><span>总件数：${page.totalSummary.totalPackageQty || 0}</span><span>总费用：${money(page.totalSummary.totalCost)}</span></div>
@@ -643,6 +643,20 @@ async function deleteOutbound(orderNo) {
         await renderOutbound();
     } catch (e) {
         alert(e.message);
+    }
+}
+
+async function openOutLog(orderNo) {
+    try {
+        const logs = await api(`api/outbound/orders/${orderNo}/logs`);
+        modal(`操作日志 - ${orderNo}`, `
+            <table>
+                <thead><tr><th>时间</th><th>操作人</th><th>操作类型</th><th>操作说明</th><th>备注</th></tr></thead>
+                <tbody>${html(logs.map(row => `<tr><td>${esc(row.operateTime)}</td><td>${esc(row.operateContact)}</td><td>${esc(row.operateType)}</td><td>${esc(row.operateDesc)}</td><td>${esc(row.remark)}</td></tr>`))}</tbody>
+            </table>
+        `);
+    } catch (e) {
+        alert("加载日志失败：" + e.message);
     }
 }
 
