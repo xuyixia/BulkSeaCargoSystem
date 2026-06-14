@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#B0D4E8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E8F4F8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="sea" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2E86AB;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#1B5E7B;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#0D3B54;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="hull" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#C0392B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8B1A1A;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Sky -->
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <!-- Clouds -->
+  <ellipse cx="300" cy="120" rx="120" ry="40" fill="white" opacity="0.7"/>
+  <ellipse cx="380" cy="110" rx="80" ry="30" fill="white" opacity="0.6"/>
+  <ellipse cx="1200" cy="80" rx="100" ry="35" fill="white" opacity="0.5"/>
+  <ellipse cx="1600" cy="150" rx="90" ry="28" fill="white" opacity="0.4"/>
+  <!-- Sea -->
+  <rect y="580" width="1920" height="500" fill="url(#sea)"/>
+  <!-- Waves -->
+  <path d="M0,600 Q240,580 480,600 Q720,620 960,600 Q1200,580 1440,600 Q1680,620 1920,600 L1920,620 Q1680,640 1440,620 Q1200,600 960,620 Q720,640 480,620 Q240,600 0,620 Z" fill="#3A9FC0" opacity="0.4"/>
+  <path d="M0,640 Q300,620 600,640 Q900,660 1200,640 Q1500,620 1920,640 L1920,660 Q1500,680 1200,660 Q900,640 600,660 Q300,680 0,660 Z" fill="#2E86AB" opacity="0.3"/>
+  <!-- Ship hull -->
+  <path d="M500,520 L540,580 L1400,580 L1440,520 Q1420,500 1380,490 L560,490 Q520,500 500,520 Z" fill="url(#hull)"/>
+  <!-- Ship deck -->
+  <rect x="560" y="460" width="800" height="30" fill="#E74C3C" rx="2"/>
+  <!-- Containers -->
+  <rect x="580" y="420" width="60" height="40" fill="#E67E22" rx="2"/>
+  <rect x="650" y="420" width="60" height="40" fill="#27AE60" rx="2"/>
+  <rect x="720" y="420" width="60" height="40" fill="#2980B9" rx="2"/>
+  <rect x="790" y="420" width="60" height="40" fill="#E67E22" rx="2"/>
+  <rect x="860" y="420" width="60" height="40" fill="#8E44AD" rx="2"/>
+  <rect x="930" y="420" width="60" height="40" fill="#27AE60" rx="2"/>
+  <rect x="1000" y="420" width="60" height="40" fill="#E74C3C" rx="2"/>
+  <rect x="1070" y="420" width="60" height="40" fill="#2980B9" rx="2"/>
+  <!-- Second row containers -->
+  <rect x="580" y="380" width="60" height="40" fill="#2980B9" rx="2"/>
+  <rect x="650" y="380" width="60" height="40" fill="#E74C3C" rx="2"/>
+  <rect x="720" y="380" width="60" height="40" fill="#E67E22" rx="2"/>
+  <rect x="790" y="380" width="60" height="40" fill="#8E44AD" rx="2"/>
+  <rect x="860" y="380" width="60" height="40" fill="#27AE60" rx="2"/>
+  <rect x="930" y="380" width="60" height="40" fill="#2980B9" rx="2"/>
+  <rect x="1000" y="380" width="60" height="40" fill="#E67E22" rx="2"/>
+  <rect x="1070" y="380" width="60" height="40" fill="#E74C3C" rx="2"/>
+  <!-- Bridge -->
+  <rect x="1180" y="350" width="100" height="110" fill="#ECF0F1" rx="3"/>
+  <rect x="1190" y="360" width="80" height="25" fill="#5DADE2" rx="2"/>
+  <rect x="1190" y="395" width="80" height="25" fill="#5DADE2" rx="2"/>
+  <rect x="1190" y="430" width="80" height="20" fill="#5DADE2" rx="2"/>
+  <!-- Mast -->
+  <rect x="1225" y="280" width="10" height="70" fill="#7F8C8D"/>
+  <rect x="1215" y="290" width="30" height="5" fill="#F39C12"/>
+  <!-- Funnel -->
+  <rect x="1200" y="300" width="30" height="50" fill="#2C3E50" rx="2"/>
+  <rect x="1200" y="300" width="30" height="10" fill="#E74C3C" rx="2"/>
+  <!-- Water reflection -->
+  <rect x="500" y="580" width="940" height="30" fill="white" opacity="0.08"/>
+</svg>

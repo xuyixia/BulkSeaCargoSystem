@@ -20,7 +20,7 @@ body {
     margin: 0;
     min-height: 100vh;
     color: var(--text);
-    background: url('https://images.unsplash.com/photo-1494412574643-ff11b0a5eb19?w=1920') no-repeat center center fixed;
+    background: url('assets/bg-ship.svg') no-repeat center center fixed;
     background-size: cover;
     font-family: Arial, "Microsoft YaHei", sans-serif;
     font-size: 14px;
@@ -30,7 +30,7 @@ body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background: rgba(244, 246, 248, 0.88);
+    background: rgba(244, 246, 248, 0.75);
     z-index: -1;
 }
 
@@ -125,7 +125,7 @@ td {
     place-items: center;
     padding: 24px;
     min-height: 100vh;
-    background: url('https://images.unsplash.com/photo-1494412574643-ff11b0a5eb19?w=1920') no-repeat center center fixed;
+    background: url('../assets/bg-ship.svg') no-repeat center center fixed;
     background-size: cover;
 }
 
@@ -133,7 +133,7 @@ td {
     content: '';
     position: fixed;
     inset: 0;
-    background: rgba(244, 246, 248, 0.85);
+    background: rgba(244, 246, 248, 0.75);
     z-index: -1;
 }
 
