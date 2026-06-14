@@ -296,9 +296,11 @@ public class OutboundService {
             }
             String mode = Params.str(body, "mode").isEmpty() ? "payable" : Params.str(body, "mode");
             if ("receivable".equals(mode)) {
-                double recePrice = body.getDouble("recePrice") == null ? number(detail.get("incomePrice")).doubleValue() : body.getDouble("recePrice");
+                String recePriceStr = Params.str(body, "recePrice");
+                double recePrice = recePriceStr.isEmpty() ? number(detail.get("incomePrice")).doubleValue() : Double.parseDouble(recePriceStr);
                 String receCurrency = Params.str(body, "receCurrency").isEmpty() ? value(detail.get("incomeCurrency")) : Params.str(body, "receCurrency");
-                double receAmount = body.getDouble("receAmount") == null ? number(detail.get("incomeAmount")).doubleValue() : body.getDouble("receAmount");
+                String receAmountStr = Params.str(body, "receAmount");
+                double receAmount = receAmountStr.isEmpty() ? number(detail.get("incomeAmount")).doubleValue() : Double.parseDouble(receAmountStr);
                 Db.update(conn,
                         "UPDATE in_order_detail SET rece_price=?, rece_currency=?, rece_amount=? WHERE in_order_detail_uuid=?",
                         recePrice, receCurrency, receAmount, detail.get("inOrderDetailUuid"));
@@ -309,9 +311,11 @@ public class OutboundService {
                 log(conn, value(detail.get("outOrderUuid")), "", "录入实收", "录入实收金额", user.getName());
                 return null;
             }
-            double sfPrice = body.getDouble("sfPrice") == null ? number(detail.get("costPrice")).doubleValue() : body.getDouble("sfPrice");
+            String sfPriceStr = Params.str(body, "sfPrice");
+            double sfPrice = sfPriceStr.isEmpty() ? number(detail.get("costPrice")).doubleValue() : Double.parseDouble(sfPriceStr);
             String sfCurrency = Params.str(body, "sfCurrency").isEmpty() ? value(detail.get("costCurrency")) : Params.str(body, "sfCurrency");
-            double sfAmount = body.getDouble("sfAmount") == null ? number(detail.get("costAmount")).doubleValue() : body.getDouble("sfAmount");
+            String sfAmountStr = Params.str(body, "sfAmount");
+            double sfAmount = sfAmountStr.isEmpty() ? number(detail.get("costAmount")).doubleValue() : Double.parseDouble(sfAmountStr);
             Db.update(conn,
                     "UPDATE out_order_detail SET sf_price=?, sf_currency=?, sf_amount=? WHERE out_order_detail_uuid=?",
                     sfPrice, sfCurrency, sfAmount, detailUuid);

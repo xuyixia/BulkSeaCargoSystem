@@ -146,13 +146,13 @@ function bindSubmit(selector, handler) {
 
 function modal(title, content) {
     const box = $("#modal");
-    box.innerHTML = `<div class="dialog"><div class="dialog-head"><h2>${esc(title)}</h2><button class="secondary" onclick="closeModal()">关闭</button></div>${content}</div>`;
+    box.innerHTML = `<div class="dialog"><div class="dialog-head"><h2>${esc(title)}</h2><button class="secondary" onclick="closeModal()">关闭</button></div><div class="dialog-body">${content}</div></div>`;
     box.classList.add("open");
 }
 
 function modal2(title, content) {
     const box = $("#modal2");
-    box.innerHTML = `<div class="dialog"><div class="dialog-head"><h2>${esc(title)}</h2><button class="secondary" onclick="closeModal2()">关闭</button></div>${content}</div>`;
+    box.innerHTML = `<div class="dialog"><div class="dialog-head"><h2>${esc(title)}</h2><button class="secondary" onclick="closeModal2()">关闭</button></div><div class="dialog-body">${content}</div></div>`;
     box.classList.add("open");
 }
 
@@ -189,7 +189,9 @@ async function initApp() {
 }
 
 async function logout() {
-    await api("api/auth/logout");
+    try {
+        await api("api/auth/logout");
+    } catch (e) {}
     location.href = "login.html";
 }
 
@@ -277,8 +279,8 @@ async function editInbound(orderNo) {
                 <div class="field"><label>客户</label><select name="customer"><option value="">请选择客户</option>${customerOptions}</select></div>
                 <div class="field"><label>销售</label><select name="sales"><option value="">请选择销售</option>${salesOptions}</select></div>
                 <div class="field"><label>入库日期</label><input type="date" name="inDate" value="${esc(order.inDate || today())}"></div>
-                ${orderNo ? `<div class="field"><label>派送类型</label><input name="sendType" value="${esc(order.sendType)}" readonly></div>
-                <div class="field"><label>派送单号</label><input name="sendNo" value="${esc(order.sendNo)}" readonly></div>` : ""}
+                ${orderNo ? `<div class="field"><label>派送类型</label><input name="sendType" value="${esc(order.sendType)}" readonly class="readonly-field"></div>
+                <div class="field"><label>派送单号</label><input name="sendNo" value="${esc(order.sendNo)}" readonly class="readonly-field"></div>` : ""}
             </div>
             ${orderNo ? `<h3>明细</h3><div id="inDetails"></div>` : ""}
             <div class="actions">
@@ -343,8 +345,11 @@ function addInDetailRow() {
     const tbody = $("#inDetailRows");
     const emptyRow = tbody.querySelector("td[colspan]");
     if (emptyRow) emptyRow.closest("tr").remove();
-    const rows = tbody.querySelectorAll("tr");
-    const seq = rows.length + 1;
+    let seq = 1;
+    tbody.querySelectorAll("tr:not(:has(td[colspan]))").forEach(tr => {
+        const num = parseInt(tr.querySelector("td:nth-child(2)")?.textContent);
+        if (!isNaN(num) && num >= seq) seq = num + 1;
+    });
     tbody.insertAdjacentHTML("beforeend", inDetailRow({}, [], tbody.dataset.packageOptions || "", seq));
     bindInboundAmountSync();
 }
@@ -441,8 +446,10 @@ async function submitInbound(orderNo) {
 
 async function cancelInbound(orderNo) {
     if (!orderNo) return;
-    await api(`api/inbound/orders/${orderNo}/cancel`, {method: "POST"});
-    await editInbound(orderNo);
+    try {
+        await api(`api/inbound/orders/${orderNo}/cancel`, {method: "POST"});
+        await editInbound(orderNo);
+    } catch (e) { alert(e.message); }
 }
 
 function openDelivery(orderNo) {
@@ -453,9 +460,11 @@ function openDelivery(orderNo) {
         </form>
     `);
     bindSubmit("#deliveryForm", async form => {
-        await api(`api/inbound/orders/${orderNo}/delivery`, {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal();
-        await editInbound(orderNo);
+        try {
+            await api(`api/inbound/orders/${orderNo}/delivery`, {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+            closeModal();
+            await editInbound(orderNo);
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
@@ -492,8 +501,11 @@ function openInboundImport() {
         </form>
     `);
     bindSubmit("#inImport", async form => {
-        const data = new FormData(form);
-        await api("api/inbound/import", {method: "POST", body: data});
+        try {
+            const data = new FormData(form);
+            await api("api/inbound/import", {method: "POST", body: data});
+            closeModal();
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
@@ -504,8 +516,10 @@ function openInboundCollection(detailUuid) {
         <div class="actions"><button>保存</button><span class="msg"></span></div>
     </form>`);
     bindSubmit("#inCollection", async form => {
-        await api("api/inbound/collection/finish", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal2();
+        try {
+            await api("api/inbound/collection/finish", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+            closeModal2();
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
@@ -523,17 +537,21 @@ function openInventoryAdjust(detailUuid, packageQty, stockPackageQty, qty, stock
         <div class="actions"><button>保存</button><span class="msg"></span></div>
     </form>`);
     bindSubmit("#inventoryAdjust", async form => {
-        await api("api/inbound/inventory/adjust", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal();
-        await renderInbound();
+        try {
+            await api("api/inbound/inventory/adjust", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+            closeModal();
+            await renderInbound();
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
 async function deleteInDetail(detailUuid) {
     if (!confirm("确认删除该入库明细及附件？")) return;
-    await api(`api/inbound/details?detailUuid=${encodeURIComponent(detailUuid)}`, {method: "DELETE"});
-    const orderNo = $("input[name='inOrderNo']").value;
-    await editInbound(orderNo);
+    try {
+        await api(`api/inbound/details?detailUuid=${encodeURIComponent(detailUuid)}`, {method: "DELETE"});
+        const orderNo = $("input[name='inOrderNo']").value;
+        await editInbound(orderNo);
+    } catch (e) { alert(e.message); }
 }
 
 async function openRelatedOutbounds(orderNo) {
@@ -590,7 +608,7 @@ async function loadOutbound(query) {
             <thead><tr><th>出库单号</th><th>SO号</th><th>状态</th><th>装柜日期</th><th>柜号</th><th>车牌</th><th>物流节点</th><th>出库件数</th><th>出库重量</th><th>出库体积</th><th>出库数量</th><th>报关行</th><th>出口口岸</th><th>创建人</th><th>费用</th><th>操作</th></tr></thead>
             <tbody>${html(page.items.map(row => `
                 <tr><td>${esc(row.outOrderNo)}</td><td>${esc(row.soNo)}</td><td><span class="status ${row.status === "有效" ? "ok" : "warn"}">${esc(row.status)}</span></td>
-                <td>${esc(row.loadingDate)}</td><td>${esc(row.containerNo)}</td><td>${esc(row.carPlate)}</td><td>${esc(row.wljd)}</td><td>${esc(row.totalPackageQty)}</td><td>${esc(row.totalWeight)}</td><td>${esc(row.totalVolume)}</td><td>${esc(row.totalQty)}</td><td>${esc(row.customsBroker)}</td><td>${esc(row.exportPort)}</td><td>${esc(row.creator)}</td><td>${money(row.totalCost)}</td>
+                <td>${esc(row.loadingDate)}</td><td>${esc(row.containerNo)}</td><td>${esc(row.carPlate)}</td><td>${esc(row.wljd)}</td><td>${esc(row.totalPackageQty)}</td><td>${esc(row.totalWeight)}</td><td>${esc(row.totalVolume)}</td><td>${esc(row.totalQty)}</td><td>${esc(row.customsBroker)}</td><td>${esc(row.exportPort)}</td><td>${esc(row.creator)}</td>                <td>${Number(row.totalCost) > 0 ? `<span style="color:#1769aa">${money(row.totalCost)}</span>` : `<span style="color:#b42318">${money(row.totalCost)}</span>`}</td>
                 <td><button class="secondary" onclick="editOutbound('${esc(row.outOrderNo)}')">编辑</button> <button class="danger" onclick="deleteOutbound('${esc(row.outOrderNo)}')">删除</button> <button class="secondary" onclick="openOutLog('${esc(row.outOrderNo)}')">操作日志</button></td></tr>
             `))}</tbody>
         </table>
@@ -615,39 +633,57 @@ async function editOutbound(orderNo) {
     modal(orderNo ? `出库单 ${orderNo}` : "新增出库单", `
         <form id="outEdit">
             <div class="grid">
-                ${orderNo ? `<div class="field"><label>出库单号</label><input name="outOrderNo" value="${esc(order.outOrderNo)}" readonly></div>` : `<input type="hidden" name="outOrderNo" value="">`}
+                <div class="field"><label>出库单编号</label><input name="outOrderNo" value="${esc(order.outOrderNo || '')}" readonly class="readonly-field"></div>
+                <div class="field"><label>状态</label><input name="status" value="${esc(order.status || '草稿')}" readonly class="readonly-field"></div>
                 <div class="field"><label>SO号</label><input name="soNo" value="${esc(order.soNo)}"></div>
-                <div class="field"><label>状态</label><input name="status" value="草稿" readonly></div>
                 <div class="field"><label>装柜日期</label><input type="date" name="loadingDate" value="${esc(order.loadingDate || today())}"></div>
                 <div class="field"><label>柜号</label><input name="containerNo" value="${esc(order.containerNo)}"></div>
                 <div class="field"><label>车牌</label><input name="carPlate" value="${esc(order.carPlate)}"></div>
                 <div class="field"><label>报关行</label><select name="customsBroker">${customsOptions}</select></div>
-                <div class="field"><label>出库口岸</label><select name="exportPort">${portOptions}</select></div>
-                <div class="field"><label>仓库</label><input value="${esc(order.warehouseCode || "WH001")}" readonly></div>
+                <div class="field"><label>出口口岸</label><select name="exportPort">${portOptions}</select></div>
+                <div class="field"><label>ATD日期</label><input value="${esc(order.atdTime || '')}" readonly class="readonly-field"></div>
+                <div class="field"><label>ETA日期</label><input value="${esc(order.etaTime || '')}" readonly class="readonly-field"></div>
+                <div class="field"><label>ATA日期</label><input value="${esc(order.ataTime || '')}" readonly class="readonly-field"></div>
+                <div class="field"><label>总件数</label><input value="${esc(order.totalPackageQty || 0)}" readonly class="readonly-field"></div>
+                <div class="field"><label>总数量</label><input value="${esc(order.totalQty || 0)}" readonly class="readonly-field"></div>
+                <div class="field"><label>总体积(m³)</label><input value="${esc(order.totalVolume || 0)}" readonly class="readonly-field"></div>
+                <div class="field"><label>总重量(kg)</label><input value="${esc(order.totalWeight || 0)}" readonly class="readonly-field"></div>
             </div>
             <div class="actions">
                 <button>保存</button>
-                ${orderNo ? `<button type="button" onclick="submitOutbound('${esc(order.outOrderNo)}')">提交</button>
-                <button type="button" class="secondary" onclick="cancelOutbound('${esc(order.outOrderNo)}')">取消提交</button>
+                ${orderNo ? `
+                ${order.status === "草稿" ? `<button type="button" onclick="submitOutbound('${esc(order.outOrderNo)}')">提交</button>` : ""}
+                ${order.status === "有效" ? `<button type="button" class="secondary" onclick="cancelOutbound('${esc(order.outOrderNo)}')">取消提交</button>` : ""}
                 <button type="button" class="secondary" onclick="openStockPicker('${esc(order.outOrderNo)}')">添加明细</button>
                 <button type="button" class="secondary" onclick="openCost('${esc(order.outOrderNo)}')">费用</button>
-                <button type="button" class="secondary" onclick="openNode('${esc(order.outOrderNo)}')">物流节点</button>
                 <a class="button-link" href="api/outbound/orders/${esc(order.outOrderNo)}/export-details">导出明细</a>
                 <a class="button-link" href="api/outbound/orders/${esc(order.outOrderNo)}/export-accounts">导出账款</a>
-                <button type="button" class="danger" onclick="deleteOutbound('${esc(order.outOrderNo)}')">删除</button>` : ""}
+                ${order.status === "草稿" ? `<button type="button" class="danger" onclick="deleteOutbound('${esc(order.outOrderNo)}')">删除</button>` : ""}` : ""}
             </div>
+            ${orderNo ? `<div class="actions" style="margin-top:8px">
+                <button type="button" class="secondary" onclick="openNodeDate('${esc(order.outOrderNo)}','出库','出库日期')">出库日期</button>
+                <button type="button" class="secondary" onclick="openNodeDate('${esc(order.outOrderNo)}','完成报关','完成日期')">完成日期</button>
+                <button type="button" class="secondary" onclick="openNodeDate('${esc(order.outOrderNo)}','完成交重','完成交重日期')">完成交重日期</button>
+                <button type="button" class="secondary" onclick="openNodeDate('${esc(order.outOrderNo)}','启运','启运日期录入')">启运日期录入</button>
+                <button type="button" class="secondary" onclick="openNodeDate('${esc(order.outOrderNo)}','到港','到港日期录入')">到港日期录入</button>
+                <button type="button" class="secondary" onclick="openNodeDate('${esc(order.outOrderNo)}','清关启动','清关启动日期')">清关启动日期</button>
+                <button type="button" class="secondary" onclick="openNodeDate('${esc(order.outOrderNo)}','清关完成','清关完成日期')">清关完成日期</button>
+                <button type="button" class="secondary" onclick="openNodeDate('${esc(order.outOrderNo)}','到仓','到仓日期')">到仓日期</button>
+            </div>` : ""}
             <div class="msg"></div>
         </form>
         <h3>出库明细</h3>
         <div>${detailTable(order.details || [])}</div>
         <h3>费用</h3>
         <div>${costTable(order.costs || [])}</div>
-        <h3>操作记录</h3>
-        <div>${logTable(order.logs || [])}</div>
         <h3>应收账款</h3>
         <div>${receivableTable(order.receivables || [])}</div>
+        <h3>操作记录</h3>
+        <div>${logTable(order.logs || [])}</div>
     `);
     bindSubmit("#outEdit", saveOutbound);
+    const containerInput = $("#outEdit input[name='containerNo']");
+    if (containerInput) containerInput.addEventListener("click", () => { $(".msg", $("#outEdit")).textContent = ""; });
     } catch (e) {
         alert("加载失败：" + e.message);
     }
@@ -674,13 +710,16 @@ function receivableTable(rows) {
 
 async function saveOutbound(form) {
     const body = Object.fromEntries(new FormData(form).entries());
+    const msg = $(".msg", form);
     if (body.containerNo && !/^[A-Z]{4}\d{7}$/.test(body.containerNo)) {
-        alert("柜号格式错误，应为4个大写字母+7位数字");
+        msg.textContent = "柜号格式错误，应为4个大写字母+7位数字";
         return;
     }
-    const orderNo = await api("api/outbound/orders", {method: "POST", body: JSON.stringify(body)});
-    closeModal();
-    await renderOutbound();
+    msg.textContent = "";
+    try {
+        const orderNo = await api("api/outbound/orders", {method: "POST", body: JSON.stringify(body)});
+        await Promise.all([editOutbound(orderNo), loadOutbound("")]);
+    } catch (e) { msg.textContent = e.message; }
 }
 
 function openOutDetailEdit(detailUuid, packages, qty) {
@@ -692,29 +731,37 @@ function openOutDetailEdit(detailUuid, packages, qty) {
         </form>
     `);
     bindSubmit("#outDetailEdit", async form => {
-        await api("api/outbound/details", {method: "PATCH", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal();
-        await renderOutbound();
+        try {
+            await api("api/outbound/details", {method: "PATCH", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+            closeModal();
+            await renderOutbound();
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
 async function deleteOutDetail(detailUuid) {
     if (!confirm("确认删除该出库明细并回补库存？")) return;
-    await api(`api/outbound/details?detailUuid=${encodeURIComponent(detailUuid)}`, {method: "DELETE"});
-    closeModal();
-    await renderOutbound();
+    try {
+        await api(`api/outbound/details?detailUuid=${encodeURIComponent(detailUuid)}`, {method: "DELETE"});
+        closeModal();
+        await renderOutbound();
+    } catch (e) { alert(e.message); }
 }
 
 async function submitOutbound(orderNo) {
-    await api(`api/outbound/orders/${orderNo}/submit`, {method: "POST"});
-    closeModal();
-    await renderOutbound();
+    try {
+        await api(`api/outbound/orders/${orderNo}/submit`, {method: "POST"});
+        closeModal();
+        await renderOutbound();
+    } catch (e) { alert(e.message); }
 }
 
 async function cancelOutbound(orderNo) {
-    await api(`api/outbound/orders/${orderNo}/cancel`, {method: "POST"});
-    closeModal();
-    await renderOutbound();
+    try {
+        await api(`api/outbound/orders/${orderNo}/cancel`, {method: "POST"});
+        closeModal();
+        await renderOutbound();
+    } catch (e) { alert(e.message); }
 }
 
 async function deleteOutbound(orderNo) {
@@ -743,8 +790,7 @@ async function openOutLog(orderNo) {
 }
 
 async function openStockPicker(orderNo, query = "") {
-    const rows = await api(`api/outbound/inventory${query ? `?${query}` : ""}`);
-    modal("选择库存明细", `
+    modal("添加出库明细", `
         <form id="stockPick">
             <div class="toolbar">
                 <div class="field"><label>跟踪单号</label><input name="trackNo"></div>
@@ -752,70 +798,108 @@ async function openStockPicker(orderNo, query = "") {
                 <div class="field"><label>销售</label><input name="sales"></div>
                 <div class="field"><label>入库开始</label><input type="date" name="inStartDate"></div>
                 <div class="field"><label>入库结束</label><input type="date" name="inEndDate"></div>
-                <button type="button" class="secondary" onclick="openStockPicker('${esc(orderNo)}', qs($('#stockPick')))">筛选</button>
+                <button type="button" class="secondary" onclick="searchStockPick('${esc(orderNo)}')">查询</button>
+                <button type="button" class="secondary" onclick="resetStockPick()">重置</button>
             </div>
-            <table><thead><tr><th></th><th>入库单号</th><th>跟踪单号</th><th>客户</th><th>销售</th><th>入库日期</th><th>品名</th><th>库存件数</th><th>出库件数</th><th>库存数量</th><th>出库数量</th></tr></thead>
-            <tbody>${html(rows.map(row => {
-                const noAmount = Number(row.costAmount || 0) <= 0 && Number(row.incomeAmount || 0) <= 0;
-                return `<tr>
-                <td>${noAmount ? "<span class=\"status warn\">缺少金额</span>" : `<input type="checkbox" name="pick" value="${esc(row.inOrderDetailUuid)}">`}</td><td>${esc(row.inOrderNo)}</td><td>${esc(row.trackNo)}</td><td>${esc(row.customer)}</td><td>${esc(row.sales)}</td><td>${esc(row.inDate)}</td><td>${esc(row.productName)}</td><td>${esc(row.stockPackageQty)}</td>
-                <td><input type="number" step="0.01" min="0" max="${esc(row.stockPackageQty)}" data-field="outPackageQty" data-id="${esc(row.inOrderDetailUuid)}" value="${esc(row.stockPackageQty)}"></td><td>${esc(row.stockQty)}</td>
-                <td><input type="number" step="0.01" min="0" max="${esc(row.stockQty)}" data-field="outQty" data-id="${esc(row.inOrderDetailUuid)}" value="${esc(row.stockQty)}"></td>
-            </tr>`;
-            }))}</tbody></table>
-            <div class="actions"><button>添加</button><span class="msg"></span></div>
+            <div id="stockPickResult"></div>
+            <div class="actions" id="stockPickActions" style="display:none"><button type="button" onclick="confirmStockPick('${esc(orderNo)}')">添加</button><span class="msg"></span></div>
         </form>
     `);
-    bindSubmit("#stockPick", async form => {
-        const picked = [...form.querySelectorAll("input[name=pick]:checked")].map(input => ({
-            inOrderDetailUuid: input.value,
-            outPackageQty: $(`input[data-field=outPackageQty][data-id="${CSS.escape(input.value)}"]`).value,
-            outQty: $(`input[data-field=outQty][data-id="${CSS.escape(input.value)}"]`).value
-        }));
+    if (query) {
+        await searchStockPick(orderNo, query);
+    }
+}
+
+async function searchStockPick(orderNo, query = "") {
+    if (!query) query = qs($("#stockPick"));
+    try {
+        const rows = await api(`api/outbound/inventory${query ? `?${query}` : ""}`);
+        $("#stockPickResult").innerHTML = `<table><thead><tr><th>选择</th><th>序号</th><th>入库单号</th><th>跟踪单号</th><th>客户</th><th>销售</th><th>入库日期</th><th>品名</th><th>唛头</th><th>包装种类</th><th>重量</th><th>体积</th><th>库存件数</th><th>库存数量</th><th>出库件数</th><th>出库数量</th></tr></thead>
+        <tbody>${html(rows.map((row, idx) => {
+            const noAmount = Number(row.costAmount || 0) <= 0 && Number(row.incomeAmount || 0) <= 0;
+            return `<tr>
+            <td>${noAmount ? "<span class=\"status warn\">缺少金额</span>" : `<input type="checkbox" name="pick" value="${esc(row.inOrderDetailUuid)}">`}</td>
+            <td>${idx + 1}</td><td>${esc(row.inOrderNo)}</td><td>${esc(row.trackNo)}</td><td>${esc(row.customer)}</td><td>${esc(row.sales)}</td><td>${esc(row.inDate)}</td><td>${esc(row.productName)}</td><td>${esc(row.marks)}</td><td>${esc(row.packageType)}</td><td>${esc(row.weight)}</td><td>${esc(row.volume)}</td><td>${esc(row.stockPackageQty)}</td><td>${esc(row.stockQty)}</td>
+            <td><input type="number" step="0.01" min="0" max="${esc(row.stockPackageQty)}" data-field="outPackageQty" data-id="${esc(row.inOrderDetailUuid)}" value="${esc(row.stockPackageQty)}"></td>
+            <td><input type="number" step="0.01" min="0" max="${esc(row.stockQty)}" data-field="outQty" data-id="${esc(row.inOrderDetailUuid)}" value="${esc(row.stockQty)}"></td>
+        </tr>`;
+        }))}</tbody></table>`;
+        $("#stockPickActions").style.display = rows.length ? "" : "none";
+    } catch (e) {
+        $("#stockPickResult").innerHTML = `<div class="msg">${esc(e.message)}</div>`;
+        $("#stockPickActions").style.display = "none";
+    }
+}
+
+function resetStockPick() {
+    $("#stockPick").reset();
+    $("#stockPickResult").innerHTML = "";
+}
+
+async function confirmStockPick(orderNo) {
+    const picked = [...document.querySelectorAll("#stockPick input[name=pick]:checked")].map(input => ({
+        inOrderDetailUuid: input.value,
+        outPackageQty: $(`input[data-field=outPackageQty][data-id="${CSS.escape(input.value)}"]`).value,
+        outQty: $(`input[data-field=outQty][data-id="${CSS.escape(input.value)}"]`).value
+    }));
+    if (!picked.length) { $(".msg", $("#stockPick")).textContent = "请先选择明细"; return; }
+    try {
         await api(`api/outbound/orders/${orderNo}/details`, {method: "POST", body: JSON.stringify({items: picked})});
         closeModal();
         await editOutbound(orderNo);
-    });
+    } catch (e) {
+        $(".msg", $("#stockPick")).textContent = e.message;
+    }
 }
 
 async function openCost(orderNo) {
-    const items = await api("api/master/dicts/enabled?type=cost_item");
-    const options = items.length ? items.map(item => `<option value="${esc(item.dictName)}">${esc(item.dictName)}</option>`).join("") : `<option value="">请先维护费用字典</option>`;
-    modal("新增费用", `
-        <form id="costForm">
-            <div class="grid"><div class="field"><label>费用名称</label><select name="costName">${options}</select></div><div class="field"><label>金额</label><input type="number" step="0.01" name="amount"></div><div class="field wide"><label>备注</label><input name="remark"></div></div>
-            <div class="actions"><button>保存</button><span class="msg"></span></div>
-        </form>
-    `);
-    bindSubmit("#costForm", async form => {
-        await api(`api/outbound/orders/${orderNo}/costs`, {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal();
-        await editOutbound(orderNo);
-    });
+    try {
+        const items = await api("api/master/dicts/enabled?type=cost_item");
+        const options = items.length ? items.map(item => `<option value="${esc(item.dictName)}">${esc(item.dictName)}</option>`).join("") : `<option value="">请先维护费用字典</option>`;
+        modal("新增费用", `
+            <form id="costForm">
+                <div class="grid"><div class="field"><label>费用名称</label><select name="costName">${options}</select></div><div class="field"><label>金额</label><input type="number" step="0.01" name="amount"></div><div class="field wide"><label>备注</label><input name="remark"></div></div>
+                <div class="actions"><button>保存</button><span class="msg"></span></div>
+            </form>
+        `);
+        bindSubmit("#costForm", async form => {
+            try {
+                await api(`api/outbound/orders/${orderNo}/costs`, {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+                closeModal();
+                await editOutbound(orderNo);
+            } catch (e) { $(".msg", form).textContent = e.message; }
+        });
+    } catch (e) { alert(e.message); }
 }
 
 async function openCostEdit(costUuid, costName, amount, remark) {
-    const items = await api("api/master/dicts/enabled?type=cost_item");
-    const selected = items.some(item => item.dictName === costName) ? costName : "";
-    const options = `${selected ? "" : `<option value="${esc(costName)}">${esc(costName)}</option>`}${items.map(item => `<option value="${esc(item.dictName)}" ${item.dictName === selected ? "selected" : ""}>${esc(item.dictName)}</option>`).join("")}`;
-    modal("编辑费用", `
-        <form id="costEditForm">
-            <div class="grid"><div class="field"><label>费用名称</label><select name="costName">${options}</select></div><div class="field"><label>金额</label><input type="number" step="0.01" name="amount" value="${esc(amount)}"></div><div class="field wide"><label>备注</label><input name="remark" value="${esc(remark)}"></div></div>
-            <div class="actions"><button>保存</button><span class="msg"></span></div>
-        </form>
-    `);
-    bindSubmit("#costEditForm", async form => {
-        await api(`api/outbound/costs?costUuid=${encodeURIComponent(costUuid)}`, {method: "PATCH", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal();
-        await renderOutbound();
-    });
+    try {
+        const items = await api("api/master/dicts/enabled?type=cost_item");
+        const selected = items.some(item => item.dictName === costName) ? costName : "";
+        const options = `${selected ? "" : `<option value="${esc(costName)}">${esc(costName)}</option>`}${items.map(item => `<option value="${esc(item.dictName)}" ${item.dictName === selected ? "selected" : ""}>${esc(item.dictName)}</option>`).join("")}`;
+        modal("编辑费用", `
+            <form id="costEditForm">
+                <div class="grid"><div class="field"><label>费用名称</label><select name="costName">${options}</select></div><div class="field"><label>金额</label><input type="number" step="0.01" name="amount" value="${esc(amount)}"></div><div class="field wide"><label>备注</label><input name="remark" value="${esc(remark)}"></div></div>
+                <div class="actions"><button>保存</button><span class="msg"></span></div>
+            </form>
+        `);
+        bindSubmit("#costEditForm", async form => {
+            try {
+                await api(`api/outbound/costs?costUuid=${encodeURIComponent(costUuid)}`, {method: "PATCH", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+                closeModal();
+                await renderOutbound();
+            } catch (e) { $(".msg", form).textContent = e.message; }
+        });
+    } catch (e) { alert(e.message); }
 }
 
 async function deleteCost(costUuid) {
     if (!confirm("确认删除该费用及附件？")) return;
-    await api(`api/outbound/costs?costUuid=${encodeURIComponent(costUuid)}`, {method: "DELETE"});
-    closeModal();
-    await renderOutbound();
+    try {
+        await api(`api/outbound/costs?costUuid=${encodeURIComponent(costUuid)}`, {method: "DELETE"});
+        closeModal();
+        await renderOutbound();
+    } catch (e) { alert(e.message); }
 }
 
 function openNode(orderNo) {
@@ -833,9 +917,32 @@ function openNode(orderNo) {
         </form>
     `);
     bindSubmit("#nodeForm", async form => {
-        await api(`api/outbound/orders/${orderNo}/nodes`, {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal();
-        await editOutbound(orderNo);
+        try {
+            await api(`api/outbound/orders/${orderNo}/nodes`, {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+            closeModal();
+            await editOutbound(orderNo);
+        } catch (e) { $(".msg", form).textContent = e.message; }
+    });
+}
+
+function openNodeDate(orderNo, node, title) {
+    modal2(title, `
+        <form id="nodeDateForm">
+            <div class="grid">
+                <div class="field"><label>日期</label><input type="date" name="operateDate" value="${today()}"></div>
+            </div>
+            <div class="actions"><button>保存</button><span class="msg"></span></div>
+        </form>
+    `);
+    bindSubmit("#nodeDateForm", async form => {
+        try {
+            const data = Object.fromEntries(new FormData(form).entries());
+            data.node = node;
+            await api(`api/outbound/orders/${orderNo}/nodes`, {method: "POST", body: JSON.stringify(data)});
+            alert("保存成功");
+            closeModal2();
+            await editOutbound(orderNo);
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
@@ -844,7 +951,7 @@ function openReceivable(detailUuid, mode) {
     const priceName = mode === "receivable" ? "recePrice" : "sfPrice";
     const currencyName = mode === "receivable" ? "receCurrency" : "sfCurrency";
     const amountName = mode === "receivable" ? "receAmount" : "sfAmount";
-    modal(title, `
+    modal2(title, `
         <form id="moneyForm">
             <input type="hidden" name="mode" value="${mode}">
             <input type="hidden" name="outOrderDetailUuid" value="${esc(detailUuid)}">
@@ -853,9 +960,12 @@ function openReceivable(detailUuid, mode) {
         </form>
     `);
     bindSubmit("#moneyForm", async form => {
-        await api("api/outbound/receivables", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal();
-        await renderOutbound();
+        try {
+            await api("api/outbound/receivables", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+            closeModal2();
+            const orderNo = $("input[name='outOrderNo']").value;
+            await editOutbound(orderNo);
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
@@ -1002,6 +1112,7 @@ async function deleteSelectedDict() {
 async function setSelectedDictStatus(status) {
     if (!state.selectedDict) return;
     await setDictStatus(state.currentDictType, state.selectedDict.code, status);
+    alert(status === "1" ? "已启用" : "已禁用");
 }
 
 function openCustomer(code = "", cnName = "", enName = "", type = "Customer", superiorCode = "") {
@@ -1013,15 +1124,19 @@ function openCustomer(code = "", cnName = "", enName = "", type = "Customer", su
         <div class="field"><label>上级代码</label><input name="superiorCode" value="${esc(superiorCode)}"></div>
     </div><div class="actions"><button>保存</button><span class="msg"></span></div></form>`);
     bindSubmit("#customerForm", async form => {
-        await api("api/master/customers", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal();
-        await loadCustomers();
+        try {
+            await api("api/master/customers", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+            closeModal();
+            await loadCustomers();
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
 async function setCustomerStatus(code, status) {
-    await api("api/master/customers", {method: "PATCH", body: JSON.stringify({code, status})});
-    await loadCustomers();
+    try {
+        await api("api/master/customers", {method: "PATCH", body: JSON.stringify({code, status})});
+        await loadCustomers();
+    } catch (e) { alert(e.message); }
 }
 
 function openUser(username = "", name = "", tel = "", userType = "员工", status = "启用", sealCode = "") {
@@ -1035,15 +1150,19 @@ function openUser(username = "", name = "", tel = "", userType = "员工", statu
         <div class="field"><label>销售代码</label><input name="sealCode" value="${esc(sealCode)}"></div>
     </div><div class="actions"><button>保存</button><span class="msg"></span></div></form>`);
     bindSubmit("#userForm", async form => {
-        await api("api/master/users", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal();
-        await loadUsers();
+        try {
+            await api("api/master/users", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
+            closeModal();
+            await loadUsers();
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
 async function setUserStatus(username, status) {
-    await api("api/master/users", {method: "PATCH", body: JSON.stringify({username, status})});
-    await loadUsers();
+    try {
+        await api("api/master/users", {method: "PATCH", body: JSON.stringify({username, status})});
+        await loadUsers();
+    } catch (e) { alert(e.message); }
 }
 
 function openDict(dictType = "", dictCode = "", dictName = "", sortOrder = "0", status = "1", remark = "") {
@@ -1059,24 +1178,30 @@ function openDict(dictType = "", dictCode = "", dictName = "", sortOrder = "0", 
         const data = Object.fromEntries(new FormData(form).entries());
         if (!data.dictCode || !data.dictCode.trim()) { alert("代码不能为空"); return; }
         if (!data.dictName || !data.dictName.trim()) { alert("名称不能为空"); return; }
-        await api("api/master/dicts", {method: "POST", body: JSON.stringify(data)});
-        closeModal();
-        state.currentDictType = data.dictType || state.currentDictType;
-        await reloadDicts();
+        try {
+            await api("api/master/dicts", {method: "POST", body: JSON.stringify(data)});
+            closeModal();
+            state.currentDictType = data.dictType || state.currentDictType;
+            await reloadDicts();
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
 async function deleteDict(type, code) {
     if (!confirm("确认删除该字典？")) return;
-    await api(`api/master/dicts?type=${encodeURIComponent(type)}&code=${encodeURIComponent(code)}`, {method: "DELETE"});
-    state.currentDictType = type;
-    await reloadDicts();
+    try {
+        await api(`api/master/dicts?type=${encodeURIComponent(type)}&code=${encodeURIComponent(code)}`, {method: "DELETE"});
+        state.currentDictType = type;
+        await reloadDicts();
+    } catch (e) { alert(e.message); }
 }
 
 async function setDictStatus(dictType, dictCode, status) {
-    await api("api/master/dicts", {method: "PATCH", body: JSON.stringify({dictType, dictCode, status})});
-    state.currentDictType = dictType;
-    await reloadDicts();
+    try {
+        await api("api/master/dicts", {method: "PATCH", body: JSON.stringify({dictType, dictCode, status})});
+        state.currentDictType = dictType;
+        await reloadDicts();
+    } catch (e) { alert(e.message); }
 }
 
 async function reloadDicts() {
@@ -1100,19 +1225,23 @@ function openAttachment(ownerType, ownerId, replace = false) {
     `);
     loadAttachments(ownerType, ownerId);
     bindSubmit("#attachForm", async form => {
-        const data = new FormData(form);
-        data.set("ownerType", ownerType);
-        data.set("ownerId", ownerId);
-        data.set("replace", replace ? "true" : "false");
-        await api("api/attachments/", {method: "POST", body: data});
-        await loadAttachments(ownerType, ownerId);
+        try {
+            const data = new FormData(form);
+            data.set("ownerType", ownerType);
+            data.set("ownerId", ownerId);
+            data.set("replace", replace ? "true" : "false");
+            await api("api/attachments/", {method: "POST", body: data});
+            await loadAttachments(ownerType, ownerId);
+        } catch (e) { $(".msg", form).textContent = e.message; }
     });
 }
 
 async function loadAttachments(ownerType, ownerId) {
-    const rows = await api(`api/attachments/?ownerType=${encodeURIComponent(ownerType)}&ownerId=${encodeURIComponent(ownerId)}`);
-    const isDetail = ownerType === "detail";
-    $("#attachList").innerHTML = `<table><thead><tr>${isDetail ? "<th>品名</th><th>唛头</th>" : ""}<th>附件名称</th><th>上传人</th><th>上传时间</th><th>操作</th></tr></thead><tbody>${html(rows.map(row => `<tr onclick="previewAttach('${esc(row.attachmentUuid)}')" style="cursor:pointer">${isDetail ? `<td>${esc(row.productName)}</td><td>${esc(row.marks)}</td>` : ""}<td>${esc(row.attachmentName)}</td><td>${esc(row.uploader)}</td><td>${esc(row.uploadTime)}</td><td><button type="button" class="danger" onclick="event.stopPropagation();deleteAttachment('${esc(row.attachmentUuid)}','${esc(ownerType)}','${esc(ownerId)}')">删除</button></td></tr>`))}</tbody></table>`;
+    try {
+        const rows = await api(`api/attachments/?ownerType=${encodeURIComponent(ownerType)}&ownerId=${encodeURIComponent(ownerId)}`);
+        const isDetail = ownerType === "detail";
+        $("#attachList").innerHTML = `<table><thead><tr>${isDetail ? "<th>品名</th><th>唛头</th>" : ""}<th>附件名称</th><th>上传人</th><th>上传时间</th><th>操作</th></tr></thead><tbody>${html(rows.map(row => `<tr onclick="previewAttach('${esc(row.attachmentUuid)}')" style="cursor:pointer">${isDetail ? `<td>${esc(row.productName)}</td><td>${esc(row.marks)}</td>` : ""}<td>${esc(row.attachmentName)}</td><td>${esc(row.uploader)}</td><td>${esc(row.uploadTime)}</td><td><button type="button" class="danger" onclick="event.stopPropagation();deleteAttachment('${esc(row.attachmentUuid)}','${esc(ownerType)}','${esc(ownerId)}')">删除</button></td></tr>`))}</tbody></table>`;
+    } catch (e) { $("#attachList").innerHTML = `<div class="msg">${esc(e.message)}</div>`; }
 }
 
 function previewAttach(uuid) {
@@ -1121,6 +1250,8 @@ function previewAttach(uuid) {
 }
 
 async function deleteAttachment(uuid, ownerType, ownerId) {
-    await api(`api/attachments/${encodeURIComponent(uuid)}`, {method: "DELETE"});
-    await loadAttachments(ownerType, ownerId);
+    try {
+        await api(`api/attachments/${encodeURIComponent(uuid)}`, {method: "DELETE"});
+        await loadAttachments(ownerType, ownerId);
+    } catch (e) { alert(e.message); }
 }

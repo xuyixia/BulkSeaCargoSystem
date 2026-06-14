@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="anchorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a5276;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d3b54;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Ring at top -->
+  <circle cx="32" cy="10" r="6" fill="none" stroke="url(#anchorGrad)" stroke-width="3"/>
+  <!-- Vertical shaft -->
+  <line x1="32" y1="16" x2="32" y2="52" stroke="url(#anchorGrad)" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Horizontal crossbar -->
+  <line x1="18" y1="26" x2="46" y2="26" stroke="url(#anchorGrad)" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Left arm -->
+  <path d="M32,52 Q12,52 10,40" fill="none" stroke="url(#anchorGrad)" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Left arrow -->
+  <path d="M14,38 L10,40 L14,43" fill="none" stroke="url(#anchorGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right arm -->
+  <path d="M32,52 Q52,52 54,40" fill="none" stroke="url(#anchorGrad)" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Right arrow -->
+  <path d="M50,38 L54,40 L50,43" fill="none" stroke="url(#anchorGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

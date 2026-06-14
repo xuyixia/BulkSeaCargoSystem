@@ -427,6 +427,14 @@ td {
     background: #d6e8f5;
 }
 
+.stock-pick-row.selected {
+    background: #d6e8f5;
+}
+
+#stockPickResult tr:has(input[name=pick]:checked) {
+    background: #d6e8f5;
+}
+
 #dictItems {
     overflow-x: auto;
 }
@@ -484,19 +492,43 @@ td {
 .dialog {
     width: min(95vw, 1400px);
     max-height: 88vh;
-    overflow: auto;
+    display: flex;
+    flex-direction: column;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 12px;
     border: 1px solid var(--line);
-    padding: 14px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(10px);
+    overflow: hidden;
+}
+
+.dialog-head {
+    flex-shrink: 0;
+    padding: 14px 14px 0;
+}
+
+.dialog-body {
+    flex: 1;
+    overflow: auto;
+    padding: 0 14px 14px;
 }
 
 .dialog table {
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+}
+
+.dialog .actions {
+    flex-shrink: 0;
+}
+
+.dialog table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    flex: 1;
+    min-height: 0;
 }
 
 .dialog-head {
@@ -528,6 +560,10 @@ td {
     width: auto;
 }
 
+.dialog .actions {
+    flex-shrink: 0;
+}
+
 .attach-layout {
     display: flex;
     gap: 12px;
@@ -556,6 +592,12 @@ td {
     font-size: 13px;
     padding: 20px;
     text-align: center;
+}
+
+.readonly-field {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    cursor: not-allowed;
 }
 
 .tracking-shell {
