@@ -40,6 +40,8 @@ public class InboundService {
                             "(SELECT COALESCE(SUM(d.weight),0) FROM in_order_detail d WHERE d.in_order_no=o.in_order_no) AS total_weight, " +
                             "(SELECT COALESCE(SUM(d.package_qty),0) FROM in_order_detail d WHERE d.in_order_no=o.in_order_no) AS total_package_qty, " +
                             "(SELECT COALESCE(SUM(d.stock_package_qty),0) FROM in_order_detail d WHERE d.in_order_no=o.in_order_no) AS total_stock_package_qty, " +
+                            "(SELECT COALESCE(SUM(d.qty),0) FROM in_order_detail d WHERE d.in_order_no=o.in_order_no) AS total_qty, " +
+                            "(SELECT COALESCE(SUM(d.stock_qty),0) FROM in_order_detail d WHERE d.in_order_no=o.in_order_no) AS total_stock_qty, " +
                             "(SELECT COUNT(*) FROM in_order_detail d WHERE d.in_order_no=o.in_order_no) AS detail_count, " +
                             "(SELECT COUNT(*) FROM in_order_attachment a JOIN in_order_detail d ON a.in_order_detail_uuid=d.in_order_detail_uuid WHERE d.in_order_no=o.in_order_no) AS attach_count, " +
                             "(SELECT l.operate_desc FROM in_order_log l WHERE l.in_order_uuid=o.in_order_uuid AND l.operate_type='send' ORDER BY l.operate_time DESC, l.create_time DESC LIMIT 1) AS logistics_node " +
@@ -93,6 +95,7 @@ public class InboundService {
                     saveDetail(conn, uuid, orderNo, d, user);
                 }
             }
+            log(conn, uuid, null, "", creating ? "新增" : "保存", user.getName(), creating ? "创建入库单" : "修改入库单");
             return orderNo;
         });
     }

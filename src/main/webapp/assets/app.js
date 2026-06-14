@@ -150,9 +150,20 @@ function modal(title, content) {
     box.classList.add("open");
 }
 
+function modal2(title, content) {
+    const box = $("#modal2");
+    box.innerHTML = `<div class="dialog"><div class="dialog-head"><h2>${esc(title)}</h2><button class="secondary" onclick="closeModal2()">关闭</button></div>${content}</div>`;
+    box.classList.add("open");
+}
+
 function closeModal() {
     $("#modal").classList.remove("open");
     $("#modal").innerHTML = "";
+}
+
+function closeModal2() {
+    $("#modal2").classList.remove("open");
+    $("#modal2").innerHTML = "";
 }
 
 async function initApp() {
@@ -214,7 +225,6 @@ async function renderInbound() {
                 <button>查询</button>
                 <button type="button" class="secondary" onclick="newInbound()">新增</button>
                 <a class="button-link" href="api/inbound/template">下载模板</a>
-                <button type="button" class="secondary" onclick="openInboundImport()">导入</button>
                 <span class="msg"></span>
             </form>
             <div id="inTable"></div>
@@ -230,14 +240,16 @@ async function loadInbound(query) {
     if (!box) return;
     box.innerHTML = `
         <table>
-            <thead><tr><th>入库单号</th><th>状态</th><th>跟踪单号</th><th>客户</th><th>销售</th><th>入库日期</th><th>件数</th><th>重量</th><th>体积</th><th>物流节点</th><th>操作</th></tr></thead>
+            <thead><tr><th>入库单号</th><th>状态</th><th>物流节点</th><th>跟踪单号</th><th>入库日期</th><th>客户</th><th>销售</th><th>体积</th><th>重量</th><th>件数</th><th>库存件数</th><th>数量</th><th>库存数量</th><th>明细数</th><th>附件数</th><th>派送类型</th><th>派送单号</th><th>创建人</th><th>操作</th></tr></thead>
             <tbody>${html(page.items.map(row => `
                 <tr>
                     <td>${esc(row.inOrderNo)}</td>
                     <td><span class="status ${row.status === "有效" ? "ok" : "warn"}">${esc(row.status)}</span></td>
-                    <td>${esc(row.trackNo)}</td><td>${esc(row.customer)}</td><td>${esc(row.sales)}</td><td>${esc(row.inDate)}</td>
-                    <td>${esc(row.totalPackageQty)}</td><td>${esc(row.totalWeight)}</td><td>${esc(row.totalVolume)}</td><td>${esc(row.logisticsNode)}</td>
-                    <td><button class="secondary" onclick="editInbound('${esc(row.inOrderNo)}')">编辑</button></td>
+                    <td>${esc(row.logisticsNode)}</td><td>${esc(row.trackNo)}</td><td>${esc(row.inDate)}</td><td>${esc(row.customer)}</td><td>${esc(row.sales)}</td>
+                    <td>${esc(row.totalVolume)}</td><td>${esc(row.totalWeight)}</td><td>${esc(row.totalPackageQty)}</td><td>${esc(row.totalStockPackageQty)}</td>
+                    <td>${esc(row.totalQty)}</td><td>${esc(row.totalStockQty)}</td><td>${esc(row.detailCount)}</td><td>${esc(row.attachCount)}</td>
+                    <td>${esc(row.sendType)}</td><td>${esc(row.sendNo)}</td><td>${esc(row.creator)}</td>
+                    <td><button class="secondary" onclick="editInbound('${esc(row.inOrderNo)}')">编辑</button> <button class="secondary" onclick="openRelatedOutbounds('${esc(row.inOrderNo)}')">出库信息</button> <button class="secondary" onclick="openInLog('${esc(row.inOrderNo)}')">查看操作日志</button></td>
                 </tr>`))}</tbody>
         </table>
         <div class="summary"><span>总数：${page.total}</span><span>总件数：${page.totalSummary.totalPackageQty || 0}</span><span>总重量：${page.totalSummary.totalWeight || 0}</span><span>总体积：${page.totalSummary.totalVolume || 0}</span></div>
@@ -252,59 +264,66 @@ function newInbound() {
 async function editInbound(orderNo) {
     const order = orderNo ? await api(`api/inbound/orders/${orderNo}`) : {details: []};
     const packageTypes = await api("api/master/dicts/enabled?type=package_type");
+    const customers = await api("api/master/customers?pageSize=1000");
+    const salesUsers = await api("api/master/users?pageSize=1000&userType=员工");
+    const isNew = !orderNo;
+    const customerOptions = customers.items.map(c => `<option value="${esc(c.customerCnName)}" ${order.customer === c.customerCnName ? "selected" : ""}>${esc(c.customerCnName)}</option>`).join("");
+    const salesOptions = salesUsers.items.map(u => `<option value="${esc(u.name)}" ${order.sales === u.name ? "selected" : ""}>${esc(u.name)}</option>`).join("");
     modal(orderNo ? `入库单 ${orderNo}` : "新增入库单", `
         <form id="inEdit">
             <div class="grid">
-                <div class="field"><label>入库单号</label><input name="inOrderNo" value="${esc(order.inOrderNo)}" readonly></div>
+                ${orderNo ? `<div class="field"><label>入库单号</label><input name="inOrderNo" value="${esc(order.inOrderNo)}" readonly></div>` : `<input type="hidden" name="inOrderNo" value="">`}
                 <div class="field"><label>跟踪单号</label><input name="trackNo" value="${esc(order.trackNo)}"></div>
-                <div class="field"><label>客户</label><input name="customer" value="${esc(order.customer)}"></div>
-                <div class="field"><label>销售</label><input name="sales" value="${esc(order.sales)}"></div>
+                <div class="field"><label>客户</label><select name="customer"><option value="">请选择客户</option>${customerOptions}</select></div>
+                <div class="field"><label>销售</label><select name="sales"><option value="">请选择销售</option>${salesOptions}</select></div>
                 <div class="field"><label>入库日期</label><input type="date" name="inDate" value="${esc(order.inDate || today())}"></div>
-                <div class="field"><label>派送类型</label><select name="sendType"><option ${order.sendType === "自提" ? "selected" : ""}>自提</option><option ${order.sendType === "派送" ? "selected" : ""}>派送</option></select></div>
-                <div class="field"><label>派送单号</label><input name="sendNo" value="${esc(order.sendNo)}"></div>
+                ${orderNo ? `<div class="field"><label>派送类型</label><input name="sendType" value="${esc(order.sendType)}" readonly></div>
+                <div class="field"><label>派送单号</label><input name="sendNo" value="${esc(order.sendNo)}" readonly></div>` : ""}
             </div>
-            <h3>明细</h3>
-            <div id="inDetails"></div>
+            ${orderNo ? `<h3>明细</h3><div id="inDetails"></div>` : ""}
             <div class="actions">
+                ${isNew ? `<button>保存</button>` : `
                 <button type="button" class="secondary" onclick="addInDetailRow()">新增明细</button>
-                <button>保存</button>
-                <button type="button" onclick="submitInbound('${esc(order.inOrderNo)}')">提交</button>
-                <button type="button" class="secondary" onclick="cancelInbound('${esc(order.inOrderNo)}')">取消提交</button>
-                <button type="button" class="secondary" onclick="openDelivery('${esc(order.inOrderNo)}')">完成派送</button>
-                ${orderNo ? `<button type="button" class="secondary" onclick="openRelatedOutbounds('${esc(order.inOrderNo)}')">关联出库</button>` : ""}
-                ${orderNo ? `<button type="button" class="secondary" onclick="openInboundNodes('${esc(order.inOrderNo)}')">物流节点详情</button>` : ""}
-                ${orderNo ? `<button type="button" class="danger" onclick="deleteInbound('${esc(order.inOrderNo)}')">删除</button>` : ""}
+                ${order.status === "草稿" ? `<button type="button" class="secondary" onclick="copyDetailRow()">复制明细</button>` : ""}
+                ${order.status === "草稿" ? `<button>保存</button><button type="button" onclick="submitInbound('${esc(order.inOrderNo)}')">提交</button>` : ""}
+                ${order.status === "有效" ? `<button type="button" class="secondary" onclick="cancelInbound('${esc(order.inOrderNo)}')">取消提交</button>` : ""}
+                ${order.status === "草稿" ? `<button type="button" class="secondary" onclick="openInboundImport()">导入</button>` : ""}
+                ${order.status === "有效" ? `<button type="button" class="secondary" onclick="openDelivery('${esc(order.inOrderNo)}')">完成派送</button>` : ""}
+                <button type="button" class="danger" onclick="deleteInbound('${esc(order.inOrderNo)}')">删除</button>`}
             </div>
             <div class="msg"></div>
         </form>
         ${orderNo ? `<h3>操作记录</h3><div>${logTable(order.logs || [])}</div>` : ""}
     `);
-    renderInDetailRows(order.details || [], packageTypes);
+    if (orderNo) {
+        renderInDetailRows(order.details || [], packageTypes, order.status);
+    }
     bindSubmit("#inEdit", saveInbound);
 }
 
-function renderInDetailRows(details, packageTypes = []) {
+function renderInDetailRows(details, packageTypes = [], status = "草稿") {
+    const isDraft = status === "草稿";
     $("#inDetails").innerHTML = `
-        <table><thead><tr><th>跟踪单号</th><th>品名</th><th>英文品名</th><th>件数</th><th>库存件数</th><th>包装</th><th>重量</th><th>体积</th><th>数量</th><th>库存数量</th><th>唛头</th><th>应付单价</th><th>应付币制</th><th>应付单位</th><th>应付金额</th><th>应收单价</th><th>应收币制</th><th>应收单位</th><th>应收金额</th><th>操作</th></tr></thead>
-        <tbody id="inDetailRows" data-package-options="${esc(dictOptions(packageTypes))}">${html(details.map(d => inDetailRow(d, packageTypes)))}</tbody></table>
+        <table><thead><tr>${isDraft ? "<th></th>" : ""}<th>序号</th><th>品名</th><th>英文品名</th><th>唛头</th><th>件数</th><th>包装种类</th><th>重量(kg)</th><th>体积(m³)</th><th>数量</th><th>应付单价</th><th>应付币制</th><th>应付单位</th><th>应付金额</th><th>应收单价</th><th>应收币制</th><th>应收单位</th><th>应收金额</th><th>实收单价</th><th>实收币制</th><th>实收金额</th><th>操作</th></tr></thead>
+        <tbody id="inDetailRows" data-package-options="${esc(dictOptions(packageTypes))}">${html(details.map((d, i) => inDetailRow(d, packageTypes, "", i + 1, status)))}</tbody></table>
     `;
     bindInboundAmountSync();
 }
 
-function inDetailRow(d = {}, packageTypes = [], packageOptionsHtml = "") {
+function inDetailRow(d = {}, packageTypes = [], packageOptionsHtml = "", seq = 1, status = "草稿") {
     const packageOptions = packageOptionsHtml || (packageTypes.length ? dictOptions(packageTypes, d.packageType, d.packageType) : `<option value="${esc(d.packageType || "")}">${esc(d.packageType || "请先维护包装字典")}</option>`);
+    const isDraft = status === "草稿";
     return `<tr>
-        <td><input name="trackNo" value="${esc(d.trackNo)}"></td>
+        ${isDraft ? `<td><input type="radio" name="detailCheck" onclick="selectDetailRow(this)"></td>` : ""}
+        <td>${seq}</td>
         <td><input name="productName" value="${esc(d.productName)}"></td>
         <td><input name="productEnName" value="${esc(d.productEnName)}"></td>
+        <td><input name="marks" value="${esc(d.marks)}"></td>
         <td><input type="number" name="packageQty" value="${esc(d.packageQty || 1)}"></td>
-        <td>${esc(d.stockPackageQty ?? "")}</td>
         <td><select name="packageType">${packageOptions}</select></td>
         <td><input type="number" step="0.01" name="weight" value="${esc(d.weight || 0)}"></td>
         <td><input type="number" step="0.01" name="volume" value="${esc(d.volume || 0)}"></td>
         <td><input type="number" name="qty" value="${esc(d.qty || 1)}"></td>
-        <td>${esc(d.stockQty ?? "")}</td>
-        <td><input name="marks" value="${esc(d.marks)}"></td>
         <td><input type="number" step="0.01" name="costPrice" value="${esc(d.costPrice ?? "")}"></td>
         <td><select name="costCurrency"><option ${d.costCurrency === "USD" ? "selected" : ""}>USD</option><option ${d.costCurrency === "RMB" ? "selected" : ""}>RMB</option><option ${d.costCurrency === "PKR" ? "selected" : ""}>PKR</option></select></td>
         <td><select name="yfUnit"><option ${d.yfUnit === "按数量" ? "selected" : ""}>按数量</option><option ${d.yfUnit === "按重量" ? "selected" : ""}>按重量</option><option ${d.yfUnit === "按体积" ? "selected" : ""}>按体积</option><option ${d.yfUnit === "无" ? "selected" : ""}>无</option></select></td>
@@ -313,13 +332,46 @@ function inDetailRow(d = {}, packageTypes = [], packageOptionsHtml = "") {
         <td><select name="incomeCurrency"><option ${d.incomeCurrency === "USD" ? "selected" : ""}>USD</option><option ${d.incomeCurrency === "RMB" ? "selected" : ""}>RMB</option><option ${d.incomeCurrency === "PKR" ? "selected" : ""}>PKR</option></select></td>
         <td><select name="ysUnit"><option ${d.ysUnit === "按数量" ? "selected" : ""}>按数量</option><option ${d.ysUnit === "按重量" ? "selected" : ""}>按重量</option><option ${d.ysUnit === "按体积" ? "selected" : ""}>按体积</option><option ${d.ysUnit === "无" ? "selected" : ""}>无</option></select></td>
         <td><input type="number" step="0.01" name="incomeAmount" value="${esc(d.incomeAmount ?? "")}"></td>
-        <td>${d.inOrderDetailUuid ? `<button type="button" class="secondary" onclick="openInboundCollection('${esc(d.inOrderDetailUuid)}')">收款</button> <button type="button" class="secondary" onclick="openInventoryAdjust('${esc(d.inOrderDetailUuid)}','${esc(d.packageQty)}','${esc(d.stockPackageQty)}','${esc(d.qty)}','${esc(d.stockQty)}','${esc(d.weight)}','${esc(d.volume)}')">库存修正</button> <button type="button" class="secondary" onclick="openAttachment('detail','${esc(d.inOrderDetailUuid)}',false)">附件</button> <button type="button" class="danger" onclick="deleteInDetail('${esc(d.inOrderDetailUuid)}')">删除</button>` : `<button type="button" class="danger" onclick="this.closest('tr').remove()">删除</button>`}</td>
+        <td><input type="number" step="0.01" name="recePrice" value="${esc(d.recePrice ?? "")}"></td>
+        <td><select name="receCurrency"><option ${d.receCurrency === "USD" ? "selected" : ""}>USD</option><option ${d.receCurrency === "RMB" ? "selected" : ""}>RMB</option><option ${d.receCurrency === "PKR" ? "selected" : ""}>PKR</option></select></td>
+        <td><input type="number" step="0.01" name="receAmount" value="${esc(d.receAmount ?? "")}"></td>
+        <td>${d.inOrderDetailUuid ? (isDraft ? `<button type="button" class="secondary" onclick="openAttachment('detail','${esc(d.inOrderDetailUuid)}',false)">附件</button> <button type="button" class="danger" onclick="deleteInDetail('${esc(d.inOrderDetailUuid)}')">删除</button>` : "") : `<button type="button" class="danger" onclick="this.closest('tr').remove()">删除</button>`}</td>
     </tr>`;
 }
 
 function addInDetailRow() {
-    $("#inDetailRows").insertAdjacentHTML("beforeend", inDetailRow({}, [], $("#inDetailRows").dataset.packageOptions || ""));
+    const tbody = $("#inDetailRows");
+    const emptyRow = tbody.querySelector("td[colspan]");
+    if (emptyRow) emptyRow.closest("tr").remove();
+    const rows = tbody.querySelectorAll("tr");
+    const seq = rows.length + 1;
+    tbody.insertAdjacentHTML("beforeend", inDetailRow({}, [], tbody.dataset.packageOptions || "", seq));
     bindInboundAmountSync();
+}
+
+function selectDetailRow(radio) {
+    document.querySelectorAll("#inDetailRows input[name='detailCheck']").forEach(cb => {
+        if (cb !== radio) cb.checked = false;
+    });
+}
+
+function copyDetailRow() {
+    const checked = document.querySelector("#inDetailRows input[name='detailCheck']:checked");
+    if (!checked) { alert("请先选择要复制的明细行"); return; }
+    const tr = checked.closest("tr");
+    const data = {};
+    tr.querySelectorAll("input, select").forEach(el => {
+        if (el.type !== "radio") data[el.name] = el.value;
+    });
+    const rows = $("#inDetailRows").querySelectorAll("tr");
+    const seq = rows.length + 1;
+    $("#inDetailRows").insertAdjacentHTML("beforeend", inDetailRow(data, [], $("#inDetailRows").dataset.packageOptions || "", seq));
+    bindInboundAmountSync();
+}
+
+function toggleAllDetailChecks() {
+    const checked = document.querySelector("thead input[name='detailCheck']").checked;
+    document.querySelectorAll("#inDetailRows input[name='detailCheck']").forEach(cb => cb.checked = checked);
 }
 
 function bindInboundAmountSync() {
@@ -354,30 +406,43 @@ function syncAmountField(tr, prefix) {
 
 async function saveInbound(form) {
     const fd = new FormData(form);
-    const rows = [...$("#inDetailRows").querySelectorAll("tr")].map(tr => {
+    const body = Object.fromEntries(fd.entries());
+    const errors = [];
+    if (!body.trackNo || !body.trackNo.trim()) errors.push("跟踪单号");
+    if (!body.customer || !body.customer.trim()) errors.push("客户");
+    if (!body.sales || !body.sales.trim()) errors.push("销售");
+    if (errors.length) { $(".msg", form).textContent = "请填写：" + errors.join("、"); return; }
+    const detailRows = $("#inDetailRows");
+    body.details = detailRows ? [...detailRows.querySelectorAll("tr")].map(tr => {
         const item = {};
         tr.querySelectorAll("input, select").forEach(input => item[input.name] = input.value);
         return item;
-    });
-    const body = Object.fromEntries(fd.entries());
-    body.details = rows;
-    await api("api/inbound/orders", {method: "POST", body: JSON.stringify(body)});
-    closeModal();
-    await renderInbound();
+    }) : [];
+    const hasAnyDetail = body.details.some(d => Object.values(d).some(v => v && String(v).trim()));
+    const hasDetailRows = body.details.length > 0;
+    if (hasDetailRows && !hasAnyDetail) { $(".msg", form).textContent = "你没有填入任何值"; return; }
+    try {
+        const orderNo = await api("api/inbound/orders", {method: "POST", body: JSON.stringify(body)});
+        await Promise.all([editInbound(orderNo), loadInbound("")]);
+    } catch (e) {
+        $(".msg", form).textContent = e.message;
+    }
 }
 
 async function submitInbound(orderNo) {
     if (!orderNo) return;
-    await api(`api/inbound/orders/${orderNo}/submit`, {method: "POST"});
-    closeModal();
-    await renderInbound();
+    try {
+        await api(`api/inbound/orders/${orderNo}/submit`, {method: "POST"});
+        await editInbound(orderNo);
+    } catch (e) {
+        $(".msg", $("#inEdit")).textContent = e.message;
+    }
 }
 
 async function cancelInbound(orderNo) {
     if (!orderNo) return;
     await api(`api/inbound/orders/${orderNo}/cancel`, {method: "POST"});
-    closeModal();
-    await renderInbound();
+    await editInbound(orderNo);
 }
 
 function openDelivery(orderNo) {
@@ -396,9 +461,27 @@ function openDelivery(orderNo) {
 
 async function deleteInbound(orderNo) {
     if (!confirm("确认删除该入库单？")) return;
-    await api(`api/inbound/orders/${orderNo}`, {method: "DELETE"});
-    closeModal();
-    await renderInbound();
+    try {
+        await api(`api/inbound/orders/${orderNo}`, {method: "DELETE"});
+        closeModal();
+        await renderInbound();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function openInLog(orderNo) {
+    try {
+        const logs = await api(`api/inbound/orders/${orderNo}`);
+        modal(`操作日志 - ${orderNo}`, `
+            <table>
+                <thead><tr><th>时间</th><th>操作人</th><th>节点</th><th>备注</th></tr></thead>
+                <tbody>${html((logs.logs || []).map(row => `<tr><td>${esc(row.operateTime)}</td><td>${esc(row.operateContact)}</td><td>${esc(row.operateDesc)}</td><td>${esc(row.remark)}</td></tr>`))}</tbody>
+            </table>
+        `);
+    } catch (e) {
+        alert("加载日志失败：" + e.message);
+    }
 }
 
 function openInboundImport() {
@@ -415,15 +498,14 @@ function openInboundImport() {
 }
 
 function openInboundCollection(detailUuid) {
-    modal("完成收款", `<form id="inCollection">
+    modal2("完成收款", `<form id="inCollection">
         <input type="hidden" name="detailUuid" value="${esc(detailUuid)}">
         <div class="grid"><div class="field"><label>实收单价</label><input type="number" step="0.01" name="recePrice"></div><div class="field"><label>币制</label><select name="receCurrency"><option>USD</option><option>RMB</option><option>PKR</option></select></div><div class="field"><label>实收金额</label><input type="number" step="0.01" name="receAmount"></div></div>
-        <div class="actions"><button>保存</button><button type="button" class="secondary" onclick="openAttachment('detail','${esc(detailUuid)}',true)">上传附件</button><span class="msg"></span></div>
+        <div class="actions"><button>保存</button><span class="msg"></span></div>
     </form>`);
     bindSubmit("#inCollection", async form => {
         await api("api/inbound/collection/finish", {method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))});
-        closeModal();
-        await renderInbound();
+        closeModal2();
     });
 }
 
@@ -450,8 +532,8 @@ function openInventoryAdjust(detailUuid, packageQty, stockPackageQty, qty, stock
 async function deleteInDetail(detailUuid) {
     if (!confirm("确认删除该入库明细及附件？")) return;
     await api(`api/inbound/details?detailUuid=${encodeURIComponent(detailUuid)}`, {method: "DELETE"});
-    closeModal();
-    await renderInbound();
+    const orderNo = $("input[name='inOrderNo']").value;
+    await editInbound(orderNo);
 }
 
 async function openRelatedOutbounds(orderNo) {
@@ -1002,11 +1084,20 @@ async function reloadDicts() {
 }
 
 function openAttachment(ownerType, ownerId, replace = false) {
-    modal("附件", `<form id="attachForm" enctype="multipart/form-data">
-        <input type="file" name="file" accept="image/*">
-        <div class="actions"><button>上传</button><span class="msg"></span></div>
-        <div id="attachList"></div>
-    </form>`);
+    modal2("附件", `
+        <div class="attach-layout">
+            <div class="attach-list">
+                <form id="attachForm" enctype="multipart/form-data">
+                    <input type="file" name="file" accept="image/*">
+                    <div class="actions"><button>上传</button><span class="msg"></span></div>
+                </form>
+                <div id="attachList"></div>
+            </div>
+            <div class="attach-preview" id="attachPreview">
+                <div class="no-image">暂无图片</div>
+            </div>
+        </div>
+    `);
     loadAttachments(ownerType, ownerId);
     bindSubmit("#attachForm", async form => {
         const data = new FormData(form);
@@ -1020,7 +1111,13 @@ function openAttachment(ownerType, ownerId, replace = false) {
 
 async function loadAttachments(ownerType, ownerId) {
     const rows = await api(`api/attachments/?ownerType=${encodeURIComponent(ownerType)}&ownerId=${encodeURIComponent(ownerId)}`);
-    $("#attachList").innerHTML = `<table><thead><tr><th>文件名</th><th>大小</th><th>上传人</th><th>操作</th></tr></thead><tbody>${html(rows.map(row => `<tr><td><a href="api/attachments/${esc(row.attachmentUuid)}/content" target="_blank">${esc(row.attachmentName)}</a></td><td>${esc(row.fileSize)}</td><td>${esc(row.uploader)}</td><td><button type="button" class="danger" onclick="deleteAttachment('${esc(row.attachmentUuid)}','${esc(ownerType)}','${esc(ownerId)}')">删除</button></td></tr>`))}</tbody></table>`;
+    const isDetail = ownerType === "detail";
+    $("#attachList").innerHTML = `<table><thead><tr>${isDetail ? "<th>品名</th><th>唛头</th>" : ""}<th>附件名称</th><th>上传人</th><th>上传时间</th><th>操作</th></tr></thead><tbody>${html(rows.map(row => `<tr onclick="previewAttach('${esc(row.attachmentUuid)}')" style="cursor:pointer">${isDetail ? `<td>${esc(row.productName)}</td><td>${esc(row.marks)}</td>` : ""}<td>${esc(row.attachmentName)}</td><td>${esc(row.uploader)}</td><td>${esc(row.uploadTime)}</td><td><button type="button" class="danger" onclick="event.stopPropagation();deleteAttachment('${esc(row.attachmentUuid)}','${esc(ownerType)}','${esc(ownerId)}')">删除</button></td></tr>`))}</tbody></table>`;
+}
+
+function previewAttach(uuid) {
+    const preview = $("#attachPreview");
+    preview.innerHTML = `<img src="api/attachments/${uuid}/content" onerror="this.parentElement.innerHTML='<div class=no-image>暂无图片</div>'" style="max-width:100%;max-height:100%;object-fit:contain;">`;
 }
 
 async function deleteAttachment(uuid, ownerType, ownerId) {

@@ -18,6 +18,11 @@ public class AttachmentService {
     public List<Map<String, Object>> list(String ownerType, String ownerId) throws Exception {
         String column = ownerColumn(ownerType);
         try (Connection conn = Db.getConnection()) {
+            if ("detail".equals(ownerType)) {
+                return Db.query(conn,
+                        "SELECT a.attachment_uuid, a.attachment_name, a.file_size, a.uploader, a.upload_time, d.product_name, d.marks FROM in_order_attachment a LEFT JOIN in_order_detail d ON a.in_order_detail_uuid=d.in_order_detail_uuid WHERE a." + column + "=? ORDER BY a.upload_time DESC",
+                        ownerId);
+            }
             return Db.query(conn,
                     "SELECT attachment_uuid, attachment_name, file_size, uploader, upload_time FROM in_order_attachment WHERE " + column + "=? ORDER BY upload_time DESC",
                     ownerId);
