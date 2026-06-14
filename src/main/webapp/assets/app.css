@@ -20,9 +20,18 @@ body {
     margin: 0;
     min-height: 100vh;
     color: var(--text);
-    background: var(--bg);
+    background: url('https://images.unsplash.com/photo-1494412574643-ff11b0a5eb19?w=1920') no-repeat center center fixed;
+    background-size: cover;
     font-family: Arial, "Microsoft YaHei", sans-serif;
     font-size: 14px;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(244, 246, 248, 0.88);
+    z-index: -1;
 }
 
 button,
@@ -115,15 +124,27 @@ td {
     display: grid;
     place-items: center;
     padding: 24px;
+    min-height: 100vh;
+    background: url('https://images.unsplash.com/photo-1494412574643-ff11b0a5eb19?w=1920') no-repeat center center fixed;
+    background-size: cover;
+}
+
+.login-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(244, 246, 248, 0.85);
+    z-index: -1;
 }
 
 .login-box {
     width: min(380px, 100%);
-    background: var(--panel);
+    background: rgba(255, 255, 255, 0.92);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 24px;
-    box-shadow: 0 8px 24px rgba(31, 41, 51, .08);
+    box-shadow: 0 8px 32px rgba(31, 41, 51, 0.12);
+    backdrop-filter: blur(10px);
 }
 
 .login-box h1 {
@@ -142,9 +163,10 @@ td {
     align-items: center;
     gap: 16px;
     justify-content: space-between;
-    background: #26323f;
+    background: linear-gradient(135deg, #1a2332, #2c3e50);
     color: #fff;
     padding: 10px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .brand {
@@ -221,11 +243,13 @@ td {
 }
 
 .panel {
-    background: var(--panel);
+    background: rgba(255, 255, 255, 0.92);
     border: 1px solid var(--line);
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(8px);
 }
 
 .toolbar {
@@ -413,10 +437,12 @@ td {
     width: min(920px, 100%);
     max-height: 88vh;
     overflow: auto;
-    background: #fff;
-    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
     border: 1px solid var(--line);
     padding: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
 }
 
 .dialog-head {
