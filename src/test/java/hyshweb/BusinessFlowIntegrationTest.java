@@ -83,7 +83,7 @@ class BusinessFlowIntegrationTest {
         assertEquals(10.0, ((Number) detail.get("stockPackageQty")).doubleValue());
         assertEquals(100.0, ((Number) detail.get("stockQty")).doubleValue());
         assertEquals(30.0, ((Number) detail.get("receAmount")).doubleValue());
-        assertEquals(3, count("SELECT COUNT(*) AS total FROM in_order_log"));
+        assertEquals(4, count("SELECT COUNT(*) AS total FROM in_order_log"));
 
         String outNo = createOutboundOrder();
         outbound.addDetails(outNo, array(json("inOrderDetailUuid", detailUuid, "outPackageQty", 2, "outQty", 20)), admin);
